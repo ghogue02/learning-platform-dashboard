@@ -217,6 +217,11 @@ def display_analysis_summary():
             formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report) # Pass lesson_analyses_data
 
             st.subheader("Part 1: Executive Summary - Top Curriculum Improvement Priorities")
+
+            # --- ADD THIS DEBUG STATEMENT ---
+            st.write("Debug: executive_summary_table_data:", executive_summary_table_data)
+            # --- END DEBUG STATEMENT ---
+
             if executive_summary_table_data: # Check if executive_summary_table_data is not empty
                 display_executive_summary_table(executive_summary_table_data) # Display Executive Summary as table
             else:
