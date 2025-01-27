@@ -33,7 +33,7 @@ openai.api_key = OPENAI_API_KEY
 def main():
     st.title("Learning Platform Analytics Dashboard")
 
-    # Create DB engine inside main() - moved inside main for clarity, though defined globally is also fine in this case
+    # Create DB engine inside main()
     engine = create_engine(DB_URL)
 
     # Sidebar Menu
@@ -176,156 +176,20 @@ def display_metrics_dashboard(engine):
                             analysis_output = analyze_lesson_content(engine, lesson_id, lesson_title, analyze_ai_responses=analyze_ai_responses) # Pass analyze_ai_responses
 
                             if analysis_output: # Check if analysis output is not None (success)
-                                st.subheader(f"Concept Analysis for Lesson: '{lesson_title}'") # Subheader for each lesson analysis - placed INSIDE expander now
+                                st.subheader("Concept Analysis:")
                                 st.write(analysis_output) # Display analysis output within expander - FULL WIDTH
 
                                 messages_df = get_lesson_messages_for_concept_analysis(engine, lesson_id=lesson_id, include_ai_responses=analyze_ai_responses) # Re-fetch messages
                                 if not messages_df.empty:
                                     sample_size = 500
                                     sample_df = messages_df.head(sample_size)
-                                    st.subheader(f"Message Activity Timeline (Sample - {min(sample_size, len(messages_df))} messages):") # Subheader inside expander
+                                    st.subheader(f"Message Activity Timeline (Sample - {min(sample_size, len(messages_df))} messages):") # Display sample size in subheader
                                     timeline_df = sample_df.set_index('created_at')
                                     timeline_df['count'] = 1
                                     daily_counts = timeline_df['count'].resample('D').sum()
                                     st.line_chart(daily_counts)
 
-                                    st.subheader(f"Lesson Message Content (Sample - {min(sample_size, len(messages_df))} messages - User and AI):") # Subheader inside expander
-                                    st.dataframe(sample_df[['created_at', 'role', 'content']])
-                            else:
-                                st.error("Analysis failed. Check logs for details.") # Error message within expander
-
-
-        else:
-            st.info("No lesson progress data available yet.")
-
-    except Exception as e:
-        logger.error(f"Error fetching lesson breakdown for content analysis: {e}")
-        st.error("Error fetching lesson data for content analysis.")
-
-
-def display_user_leaderboard(engine):
-    st.header("User Leaderboard")
-    st.write("Note: 'Universal Chat Messages' count is approximated and may not be perfectly accurate without a clear distinction in the database.")
-
-    time_ranges = {
-        "All Time": 999999,
-        "Last 7 Days": 7,
-        "Last 30 Days": 30
-    }
-    selected_range = st.selectbox("Time Range for Completions", list(time_ranges.keys()))
-    days_back = time_ranges[selected_range]
-
-    if selected_range == "All Time":
-        start_time = datetime(1970, 1, 1)
-    else:
-        start_time = datetime.now() - timedelta(days=days_back)
-
-    leaderboard_query = text("""
-        SELECT
-            u.first_name,
-            u.last_name,
-            COUNT(DISTINCT ls.lesson_id) AS lessons_completed,
-            COALESCE(SUM(
-                CASE
-                    WHEN EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60 > 120 THEN 120
-                    ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
-                END
-            ), 0) as time_spent_minutes,
-            -- Count lesson messages from lesson_session_messages for each user
-            (SELECT COUNT(*) FROM lesson_session_messages lsm
-             INNER JOIN lesson_sessions ls_sub ON lsm.session_id = ls_sub.session_id
-             WHERE ls_sub.user_id = u.user_id AND (ls_sub.created_at >= :start_time OR ls_sub.updated_at >= :start_time)) as lesson_messages,
-            -- Count universal chat messages from conversation_messages for each user
-            (SELECT COUNT(*) FROM conversation_messages cm
-             WHERE cm.user_id = u.user_id AND cm.message_role = 'user' AND cm.created_at >= :start_time) as universal_chat_messages,
-            MAX(ls.updated_at) as last_activity_time,
-            COUNT(DISTINCT ls.session_id) FILTER (WHERE ls.updated_at >= :start_time) AS active_sessions_count
-        FROM users u
-        LEFT JOIN lesson_sessions ls ON u.user_id = ls.user_id AND ls.status = 'completed' AND ls.updated_at >= :start_time
-        GROUP BY u.user_id, u.first_name, u.last_name
-        ORDER BY lessons_completed DESC
-        LIMIT 20
-    """)
-
-    try:
-        with engine.connect() as conn:
-            df_leaderboard = pd.read_sql_query(leaderboard_query, conn, params={"start_time": start_time})
-
-        df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time)
-        df_leaderboard['time_since_last_activity'] = df_leaderboard['last_activity_time'].apply(format_time_since_activity)
-
-        st.dataframe(df_leaderboard[['first_name', 'last_name', 'lessons_completed', 'time_spent_learning', 'lesson_messages', 'universal_chat_messages', 'active_sessions_count', 'time_since_last_activity']], height=800)
-
-    except Exception as e:
-        logger.error(f"Error fetching leaderboard: {e}")
-        st.error("Failed to load leaderboard data.")
-
-
-def display_content_analysis(engine):
-    st.header("Lesson Concept Analysis")
-    st.write("Analyze student understanding and struggles within lessons. Expand 'Analysis Options' for each lesson and click 'Analyze' to generate GPT analysis.")
-
-    lesson_breakdown_query = text("""
-        SELECT
-          l.lesson_id,
-          l.title,
-          COUNT(DISTINCT ls.user_id) FILTER (WHERE ls.status='completed') AS users_completed,
-          COUNT(DISTINCT ls.user_id) FILTER (WHERE ls.status='in_progress') AS users_in_progress,
-          COUNT(DISTINCT ls.user_id) AS total_users_started
-        FROM lessons l
-        LEFT JOIN lesson_sessions ls ON l.lesson_id = ls.lesson_id
-        GROUP BY l.lesson_id, l.title
-        ORDER BY users_completed DESC  -- Order by users_completed DESC
-    """)
-
-    try:
-        with engine.connect() as conn:
-            lesson_df = pd.read_sql_query(lesson_breakdown_query, conn)
-
-        if not lesson_df.empty:
-            lesson_df['completion_rate'] = (lesson_df['users_completed'] / lesson_df['total_users_started'] * 100).fillna(0).round(0).astype(int)
-            lesson_df = lesson_df.sort_values(by='users_completed', ascending=False)
-
-
-            st.subheader("Analyze Lessons") # Subheader for buttons
-
-            analysis_results = {} # Dictionary to store analysis output per lesson
-
-            for index, lesson_row in lesson_df.iterrows(): # Iterate through lesson rows
-                lesson_title = lesson_row['title']
-                lesson_id = str(lesson_row['lesson_id'])
-
-                col1, col2, col3, col4, col5 = st.columns([4, 1, 1, 1, 2]) # Adjust column widths as needed for layout
-                with col1:
-                    st.write(f"**{lesson_title}**") # Lesson title in first column
-                with col2:
-                    st.write(f"Completed: {lesson_row['users_completed']}")
-                with col3:
-                    st.write(f"In Progress: {lesson_row['users_in_progress']}")
-                with col4:
-                    st.write(f"Rate: {lesson_row['completion_rate']}%")
-                with col5:
-                    with st.expander(f"Analysis Options - Lesson: {lesson_title}", expanded=False): # Expander for each lesson
-                        analyze_ai_responses = st.checkbox("Include AI Responses in Analysis", value=True, key=f"ai_checkbox_{lesson_id}_expander") # Checkbox INSIDE expander
-
-                        if st.button("Analyze", key=f"analyze_button_{lesson_id}_expander"): # Analyze button INSIDE expander
-                            analysis_output = analyze_lesson_content(engine, lesson_id, lesson_title, analyze_ai_responses=analyze_ai_responses) # Pass analyze_ai_responses
-
-                            if analysis_output: # Check if analysis output is not None (success)
-                                st.subheader(f"Concept Analysis for Lesson: '{lesson_title}'") # Subheader for each lesson analysis - placed INSIDE expander now
-                                st.write(analysis_output) # Display analysis output within expander - FULL WIDTH
-
-                                messages_df = get_lesson_messages_for_concept_analysis(engine, lesson_id=lesson_id, include_ai_responses=analyze_ai_responses) # Re-fetch messages
-                                if not messages_df.empty:
-                                    sample_size = 500
-                                    sample_df = messages_df.head(sample_size)
-                                    st.subheader(f"Message Activity Timeline (Sample - {min(sample_size, len(messages_df))} messages):") # Subheader inside expander
-                                    timeline_df = sample_df.set_index('created_at')
-                                    timeline_df['count'] = 1
-                                    daily_counts = timeline_df['count'].resample('D').sum()
-                                    st.line_chart(daily_counts)
-
-                                    st.subheader(f"Lesson Message Content (Sample - {min(sample_size, len(messages_df))} messages - User and AI):") # Subheader inside expander
+                                    st.subheader(f"Lesson Message Content (Sample - {min(sample_size, len(messages_df))} messages - User and AI):") # Display sample size in subheader
                                     st.dataframe(sample_df[['created_at', 'role', 'content']])
                             else:
                                 st.error("Analysis failed. Check logs for details.") # Error message within expander
@@ -344,39 +208,28 @@ def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
     st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
 
-    analysis_html_filepath = "overall_analysis_summary.html" # Path to your HTML summary file
+    summary_prompt, lesson_analyses_data = summarize_lesson_analyses() # Get prompt and lesson data
 
-    if os.path.exists(analysis_html_filepath):
-        with open(analysis_html_filepath, "r", encoding="utf-8") as f: # Open HTML file
-            analysis_html = f.read()
+    if summary_prompt:
+        with st.spinner("Generating analysis summary..."): # Show spinner while generating
+            try:
+                response = openai.chat.completions.create( # Call OpenAI API to get summary
+                    model="gpt-4o-mini", # Or your preferred model
+                    messages=[{"role": "user", "content": summary_prompt}],
+                    temperature=0.7
+                )
+                analysis_summary_markdown = response.choices[0].message.content # Get Markdown summary from response
+                
+                formatted_output = format_lesson_insights_for_output(lesson_analyses_data, analysis_summary_markdown) # Format with lesson insights
 
-            # Basic CSS styling - you can customize this further
-            styled_html = f"""
-            <style>
-                body {{
-                    color: white; /* Or your desired text color for dark mode */
-                    background-color: #1e1e1e; /* Or your desired background color for dark mode */
-                }}
-                h1, h2, h3, h4, h5, h6 {{
-                    color: lightblue; /* Style for headings */
-                }}
-                ul, ol {{
-                    list-style-type: disc; /* Style for lists */
-                    margin-left: 20px;
-                }}
-                body {{
-                    font-family: sans-serif; /* Example font */
-                    font-size: 16px;
-                    line-height: 1.6;
-                }}
-            </style>
-            {analysis_html}
-            """
+                st.markdown(formatted_output) # Display Markdown summary in Streamlit
 
-            from streamlit.components.v1 import html # Import streamlit html component
-            html(styled_html, height=800, scrolling=True) # Display styled HTML in Streamlit
+            except Exception as e:
+                logger.error(f"Error generating analysis summary from OpenAI: {e}")
+                st.error("Error generating analysis summary. Please check logs.")
     else:
-        st.error(f"Analysis summary file not found: '{analysis_html_filepath}'. Please run the weekly analysis script to generate the summary.")
+        st.info("No lesson analysis files found to summarize. Run weekly analysis first.")
+
 
 
 def display_user_leaderboard(engine):
@@ -435,7 +288,6 @@ def display_user_leaderboard(engine):
     except Exception as e:
         logger.error(f"Error fetching leaderboard: {e}")
         st.error("Failed to load leaderboard data.")
-
 
 
 def analyze_lesson_content(engine, lesson_id, lesson_title, sample_size=500, retry_count=0, max_retries=3, analyze_ai_responses=False): # Added analyze_ai_responses to params
