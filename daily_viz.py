@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 import logging
 from openai import OpenAI, APIError  # Correct import for APIError
-from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output # Import summary functions
+from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output, format_executive_summary_table_data # Import format_executive_summary_table_data
 
 
 # ENSURE set_page_config IS THE FIRST STREAMLIT COMMAND
@@ -210,17 +210,17 @@ def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
     st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
 
-    summary_report, lesson_insights_table_data = summarize_lesson_analyses() # Expecting TWO values now - CORRECT for now
-# summary_report, lesson_insights_table_data, executive_summary_table_data = summarize_lesson_analyses() # Original line - comment out
+    summary_report, lesson_insights_table_data, executive_summary_table_data = summarize_lesson_analyses() # Get all three return values
+
     if summary_report:
         with st.spinner("Generating analysis summary..."):
             formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report)
 
             st.subheader("Part 1: Executive Summary - Top Curriculum Improvement Priorities")
-            if executive_summary_table_data: # Check if executive_summary_table_data is not empty before displaying table
+            if executive_summary_table_data: # Check if executive_summary_table_data is not empty
                 display_executive_summary_table(executive_summary_table_data) # Display Executive Summary as table
             else:
-                st.warning("No Executive Summary data available.") # Handle case where no executive summary table data
+                st.warning("No Executive Summary data available.") # Warning if no table data
 
             if lesson_insights_table_data:
                 with st.expander("Part 2: Lesson-Specific Opportunity Insights for Coaches (Click to Expand)", expanded=False):
@@ -230,20 +230,23 @@ def display_analysis_summary():
         st.info("No lesson analysis files found to summarize. Run weekly analysis script to generate the summary.")
 
 
+
 def display_executive_summary_table(summary_table_data):
     """Displays the Executive Summary in a Streamlit DataFrame table."""
     summary_df = pd.DataFrame(summary_table_data) # Convert data to DataFrame
     st.dataframe(summary_df.set_index('Challenge'), # Set 'Challenge' column as index for better readability
                  column_config={ # Configure columns
-                     "Challenge": st.column_config.Column(width="medium", hidden=True), # Hide 'Challenge' index column
+                     "Challenge": st.column_config.Column(label="Key Challenge", width="medium", hidden=True), # Hidden index column with label
                      "Description": st.column_config.Column(width="large"),
                      "Example": st.column_config.Column(width="medium"),
                      "Severity Level": st.column_config.Column(width="small"),
-                     "Actionable Recommendation": st.column_config.Column(width="large")
+                     "Actionable Recommendation": st.column_config.Column(width="large", label="Recommendation") # More user-friendly label
                  }, 
                  hide_index=False, # Show index (Challenge names will be index now)
-                 height=350 # Adjusted height
+                 height=350, # Adjusted height
+                 use_container_width=True # Make table responsive to container width
     ) # Display DataFrame as Streamlit table
+
 
 
 def display_lesson_insights_table(lesson_insights_table_data):

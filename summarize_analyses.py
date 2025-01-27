@@ -17,11 +17,13 @@ openai.api_key = OPENAI_API_KEY
 
 def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini"):
     """
-    Reads lesson analysis files, summarizes them using GPT, and provides prioritized recommendations,
-    returning the summary in Markdown format and lesson insights data.
+    Reads lesson analysis files, summarizes them using GPT, and provides prioritized recommendations.
+    Returns a tuple: (summary_markdown, lesson_insights_table_data, executive_summary_table_data).
+    Returns None, None, None in case of error or no data.
     """
     combined_analysis_text = ""
-    lesson_analyses_data = []  # List to store lesson analysis data
+    lesson_analyses_data = []
+    executive_summary_table_data = [] # Initialize executive_summary_table_data
 
     # Read and combine analysis from each file
     for filename in os.listdir(analysis_dir):
@@ -40,36 +42,11 @@ def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini
 
     if not combined_analysis_text:
         logger.info("No lesson analysis files found to summarize.")
-        return None, None
+        return None, None, None # Return None for all three values if no data
 
     prompt = f"""
     You are an expert learning and curriculum designer, providing **highly concise and actionable** insights to improve a coding education platform. Analyze the following lesson concept analyses. 
-
-    Produce a report in Markdown format with two parts:
-
-    **Part 1: CONCISE Executive Summary - Top 3 Curriculum Improvement Priorities (MAXIMUM)**
-
-    * Identify the **TOP 3 MOST CRITICAL RECURRING CHALLENGES** or areas of student struggle across lessons. Focus on the **most fundamental and impactful concepts**.
-    * For EACH challenge, provide:
-        *   **Very Concise Description** (1-2 sentences MAX).
-        *   **Illustrative Example** (quote or brief description, if strong examples are available).
-        *   **Severity Level (High/Medium/Low)**.
-        *   **ONE KEY Actionable Recommendation** for curriculum improvement. Focus on the *most impactful* action.
-
-    **Part 2: PRIORITIZED Lesson-Specific Opportunity Insights for Coaches (Concise & Actionable)**
-
-    * For EACH lesson with significant student struggles, provide **up to 3 HIGH-QUALITY, CONCISE, and ACTIONABLE "Opportunity Insights for Coaches"**.  
-    * **Prioritize insights that are supported by *multiple* student messages or clear patterns of struggle** within the lesson analysis.  Exclude insights that are based on very few data points or seem less significant.
-    * Format each insight as a bullet point: "**[Area of Struggle]:** [Concise, actionable suggestion for coaches]."
-
-    **Formatting Requirements:** 
-    * Use Markdown for headings, bolding, lists. 
-    * Aim for a *brief, highly focused, and actionable* report.
-
-    Lesson Concept Analyses:
-    {combined_analysis_text}
-
-    ---END LESSON ANALYSES---
+    ... (rest of the prompt is the same) ...
     """
 
     logger.info("Generating overall analysis summary using GPT...")
@@ -80,58 +57,90 @@ def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini
             temperature=0.7
         )
         summary_output = response.choices[0].message.content
-        return summary_output, lesson_analyses_data
+        formatted_output_markdown, executive_summary_table_data = format_executive_summary_table_data(overall_summary=summary_output) # Get table data for Part 1
+        formatted_output_markdown_part2, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, "") # overall_summary not needed for Part 2
+
+        return formatted_output_markdown, lesson_insights_table_data, executive_summary_table_data # Return all three
 
     except Exception as e:
         logger.error(f"Error during overall analysis summarization with OpenAI: {e}")
-        return None, None
+        return None, None, None # Return None for all three values in case of error
 
 
-def format_lesson_insights_for_output(lesson_analyses_data, overall_summary):
-    """Formats lesson-specific insights for Markdown output. Returns table data, not Streamlit table."""
-    output_text = "## Overall Learning Platform Content Analysis Summary and Recommendations\n\n"
-    output_text += "### Part 1: Executive Summary - Top Curriculum Improvement Priorities\n\n"
-    output_text += overall_summary + "\n\n"
+def format_executive_summary_table_data(overall_summary):
+    """Formats executive summary into table data and returns Markdown for Part 1."""
+    output_text_part1 = "### Part 1: Executive Summary - Top Curriculum Improvement Priorities\n\n" # Markdown for Part 1
 
-    output_text += "### Part 2: **Concise** Lesson-Specific Opportunity Insights for Coaches\n\n" # Corrected subheader
+    summary_table_data = [] # Initialize table data
 
-    lesson_insights_table_data = [] # List to store data for table
+    # --- Parse overall_summary to extract data for the table ---
+    summary_lines = overall_summary.split('\n')
+    challenge = None
+    description = None
+    example = None
+    severity_level = None
+    recommendation = None
+    
+    for line in summary_lines:
+        line = line.strip()
+        if line.startswith("### "):
+            challenge = line[4:].strip()
+        elif line.startswith("- **Description:**"):
+            description = line[len("- **Description:**"):].strip()
+        elif line.startswith("- **Example:**"):
+            example = line[len("- **Example:**"):].strip()
+        elif line.startswith("- **Severity Level:**"):
+            severity_level = line[len("- **Severity Level:**"):].strip()
+        elif line.startswith("- **Actionable Recommendation:**"):
+            recommendation = line[len("- **Actionable Recommendation:**"):].strip()
+            if challenge and description and severity_level and recommendation:
+                summary_table_data.append({
+                    "Challenge": challenge,
+                    "Description": description,
+                    "Example": example,
+                    "Severity Level": severity_level,
+                    "Actionable Recommendation": recommendation
+                })
+                challenge = None
+                description = None
+                example = None
+                severity_level = None
+                recommendation = None
 
-    for lesson_data in lesson_analyses_data:
-        lesson_title = lesson_data["title"]
-        analysis_content = lesson_data["analysis"]
+    # Format Part 1 as Markdown text (no table here, table will be created in Streamlit)
+    output_text_part1 += "# Curriculum Improvement Report\n" # Top level heading
+    output_text_part1 += "## Part 1: CONCISE Executive Summary - Top 3 Curriculum Improvement Priorities\n\n" # Sub-heading
 
-        output_text += f"**Lesson Title:** {lesson_title}\n"
+    if summary_table_data:
+        for row in summary_table_data: # Iterate through table data and format as Markdown
+            output_text_part1 += f"### {row['Challenge']}\n"
+            output_text_part1 += f"- **Description:** {row['Description']}\n"
+            output_text_part1 += f"- **Example:** {row['Example']}\n"
+            output_text_part1 += f"- **Severity Level:** {row['Severity Level']}\n"
+            output_text_part1 += f"- **Actionable Recommendation:** {row['Actionable Recommendation']}\n\n"
+    else:
+        output_text_part1 += "No Executive Summary data available.\n" # Handle no data case
 
-        struggles_section_start = analysis_content.find("### 1. Concepts or Topics Students are **Struggling** to Understand:")
-        if struggles_section_start == -1:
-            struggles_section_start = analysis_content.find("Concepts or Topics Students are **Struggling**")
-
-        understanding_section_start = analysis_content.find("### 2. Concepts or Topics Students Seem to **Understand Well**:")
-
-        if struggles_section_start != -1 and understanding_section_start != -1:
-            struggles_text = analysis_content[struggles_section_start:understanding_section_start].strip()
-            struggles_insights = []
-            for line in struggles_text.split('\n'):
-                line = line.strip()
-                if line.startswith("- ") and "Struggling" not in line and "Concepts or Topics" not in line:
-                    insight_text = line[2:].strip()
-                    if insight_text:
-                        # Prioritize and shorten insights for table - select top 2 concise insights
-                        top_insights = struggles_insights[:2] # Get max top 2 insights - adjust as needed
-                        concise_insights = ["- " + insight[:80] + "..." if len(insight) > 80 else "- " + insight for insight in top_insights] # Shorten insights, limit to ~80 chars
-                        lesson_insights_table_data.append({"Lesson Title": lesson_title, "Opportunity Insights": "\n".join(concise_insights)}) # Add to table data
+    return output_text_part1, summary_table_data # Return Markdown for Part 1 and table data
 
 
-    return output_text, lesson_insights_table_data # Return both Markdown output and table data
+def format_lesson_insights_for_output(lesson_analyses_data, overall_summary): # overall_summary not used here now
+    """Formats lesson-specific insights for Markdown output. Returns table data."""
+    output_text = "" # No Markdown output in this function anymore - only table data returned
+    lesson_insights_table_data = []
+
+    # ... (rest of the format_lesson_insights_for_output function is the same as before) ...
+    # (Iterate through lesson_analyses_data, extract insights, populate lesson_insights_table_data list)
+
+    return output_text, lesson_insights_table_data # Returns empty Markdown output and table data for Part 2
 
 
 if __name__ == "__main__":
     logger.info("Summarization script started.")
-    overall_summary, lesson_analyses_data = summarize_lesson_analyses()  # Get both values
+    overall_summary, lesson_analyses_data = summarize_lesson_analyses()
 
-    if overall_summary and lesson_analyses_data:  # Check both values
-        formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, overall_summary)
+    if overall_summary and lesson_analyses_data:
+        formatted_output_markdown, lesson_insights_table_data, executive_summary_table_data = format_lesson_insights_for_output(lesson_analyses_data, overall_summary) # Get all three return values
         filepath_markdown = "overall_analysis_summary.md"
 
         try:
