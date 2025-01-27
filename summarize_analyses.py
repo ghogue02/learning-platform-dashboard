@@ -133,18 +133,20 @@ def format_executive_summary_table_data(overall_summary):
         elif line.startswith("- **Actionable Recommendation:**"):
             recommendation = line[len("- **Actionable Recommendation:**"):].strip()
             if challenge and description and severity_level and recommendation:
+                # --- Explicitly define dictionary keys as strings ---
                 summary_table_data.append({
-                    "Challenge": challenge,
-                    "Description": description,
-                    "Example": example,
-                    "Severity Level": severity_level,
-                    "Actionable Recommendation": recommendation
+                    'Challenge': challenge,
+                    'Description': description,
+                    'Example': example,
+                    'Severity Level': severity_level,
+                    'Actionable Recommendation': recommendation
                 })
                 challenge = None
                 description = None
                 example = None
                 severity_level = None
                 recommendation = None
+
 
     # Format Part 1 as Markdown text (no table here, table will be created in Streamlit)
     output_text_part1 += "# Curriculum Improvement Report\n" # Top level heading
