@@ -241,14 +241,14 @@ def display_executive_summary_table(summary_table_data):
     st.dataframe(summary_df.set_index('Challenge'),
                  column_config={
                      # "Challenge" column is now the index, so no need to configure as a column
-                     "Description": st.column_config.Column(width="large", use_container_width=True,  label="Description"), # Renamed header, word wrap - max_width removed
-                     "Example": st.column_config.Column(width="medium", use_container_width=True, ), # Word wrap - max_width removed
-                     "Severity Level": st.column_config.Column(width="small", use_container_width=True,), # Word wrap - max_width removed
-                     "Actionable Recommendation": st.column_config.Column(width="large", use_container_width=True, label="Recommendation") # Word wrap - max_width removed
+                     "Description": st.column_config.Column(width="large", label="Description"), # Renamed header, word wrap - max_width and use_container_width removed
+                     "Example": st.column_config.Column(width="medium"), # Word wrap - max_width and use_container_width removed
+                     "Severity Level": st.column_config.Column(width="small"), # Word wrap - max_width and use_container_width removed
+                     "Actionable Recommendation": st.column_config.Column(width="large", label="Recommendation") # Word wrap - max_width and use_container_width removed
                  },
                  hide_index=False, # Keep index visible (Challenge names)
-                 height=350,
-                 use_container_width=True
+                 height=350
+                 # use_container_width=True # removed use_container_width
     )
 
 
@@ -258,11 +258,12 @@ def display_lesson_insights_table(lesson_insights_table_data):
     insights_df = pd.DataFrame(lesson_insights_table_data)
     st.dataframe(insights_df,
                  column_config={
-                     "Lesson Title": st.column_config.Column(width="medium", use_container_width=True), # Word wrap - max_width removed
-                     "Opportunity Insights": st.column_config.Column(width="large", use_container_width=True) # Word wrap - max_width removed
+                     "Lesson Title": st.column_config.Column(width="medium"), # Word wrap - max_width and use_container_width removed
+                     "Opportunity Insights": st.column_config.Column(width="large") # Word wrap - max_width and use_container_width removed
                  },
                  hide_index=True,
                  height=300
+                 # use_container_width=True # removed use_container_width
     )
 
 
