@@ -7,8 +7,7 @@ from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 import logging
 from openai import OpenAI, APIError  # Correct import for APIError
-from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output, display_lesson_insights_table
-
+from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output
 
 # ENSURE set_page_config IS THE FIRST STREAMLIT COMMAND
 st.set_page_config(
