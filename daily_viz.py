@@ -210,16 +210,21 @@ def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
     st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
 
-    summary_report, lesson_analyses_data = summarize_lesson_analyses()  # Get both values
+    summary_report, lesson_insights_table_data = summarize_lesson_analyses() # Get summary and table data dynamically
 
     if summary_report:
-        with st.spinner("Generating analysis summary..."):
-            formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report)  # Pass lesson_analyses_data
-            st.markdown(formatted_output_markdown)
+        with st.spinner("Generating analysis summary..."): # Show spinner while generating
+            formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report) # Format with lesson insights
 
-            if lesson_insights_table_data:
-                st.subheader("Lesson-Specific Opportunity Insights for Coaches")
-                display_lesson_insights_table(lesson_insights_table_data)
+            st.subheader("Part 1: Executive Summary - Top Curriculum Improvement Priorities") # Subheader for Part 1
+            st.markdown(formatted_output_markdown) # Display Executive Summary (Part 1) in Markdown - FULL WIDTH
+
+            if lesson_insights_table_data: # Check if there's table data to display
+                with st.expander("Part 2: Lesson-Specific Opportunity Insights for Coaches (Click to Expand)", expanded=False): # Expander for Part 2
+                    st.write("Detailed, lesson-specific insights and actionable suggestions for coaches. Expand to view.") # Hint text inside expander
+                    display_lesson_insights_table(lesson_insights_table_data) # Call function to display table inside expander
+
+
     else:
         st.info("No lesson analysis files found to summarize. Run weekly analysis script to generate the summary.")
 
@@ -227,9 +232,14 @@ def display_analysis_summary():
 def display_lesson_insights_table(lesson_insights_table_data):
     """Displays lesson-specific opportunity insights in a Streamlit DataFrame table."""
     insights_df = pd.DataFrame(lesson_insights_table_data) # Convert data to DataFrame
-    st.dataframe(insights_df, column_config={ # Display DataFrame as Streamlit table
-        "Opportunity Insights": st.column_config.Column(width="large") # Make "Opportunity Insights" column wider
-    }, hide_index=True) # Hide index for cleaner look
+    st.dataframe(insights_df, 
+                 column_config={ # Display DataFrame as Streamlit table
+                     "Lesson Title": st.column_config.Column(width="medium"), # Adjust Lesson Title column width
+                     "Opportunity Insights": st.column_config.Column(width="large") # Make "Opportunity Insights" column wider
+                 }, 
+                 hide_index=True, # Hide index for cleaner look
+                 height=300 # Set a fixed height with scrolling
+    )
 
 
 def display_user_leaderboard(engine):
@@ -317,11 +327,6 @@ def analyze_lesson_content(engine, lesson_id, lesson_title, sample_size=500, ret
                 logger.error(f"Unexpected error during concept analysis: {e}") # Log unexpected errors
                 st.error(f"An unexpected error occurred during analysis. Please check logs for details.") # User-friendly error for unexpected issues
                 return None # Return None in case of error
-
-
-    else:
-        st.write(f"No lesson messages found for Lesson: '{lesson_title}'.")
-        return None # Return None if no messages found
 
 
 def get_lesson_messages_for_concept_analysis(engine, lesson_id, include_ai_responses=False):
