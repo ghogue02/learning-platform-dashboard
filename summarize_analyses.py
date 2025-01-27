@@ -18,8 +18,8 @@ openai.api_key = OPENAI_API_KEY
 def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini"):
     """
     Reads lesson analysis files, summarizes them using GPT, and provides prioritized recommendations.
-    Returns a tuple: (summary_markdown, lesson_insights_table_data, executive_summary_table_data).
-    Returns None, None, None in case of error or no data.
+    Returns a tuple: (summary_markdown, lesson_insights_table_data, executive_summary_table_data, lesson_analyses_data).
+    Returns None, None, None, None in case of error or no data.
     """
     combined_analysis_text = ""
     lesson_analyses_data = []
@@ -42,11 +42,50 @@ def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini
 
     if not combined_analysis_text:
         logger.info("No lesson analysis files found to summarize.")
-        return None, None, None # Return None for all three values if no data
+        return None, None, None, None # Return None for all four values if no data
 
     prompt = f"""
-    You are an expert learning and curriculum designer, providing **highly concise and actionable** insights to improve a coding education platform. Analyze the following lesson concept analyses. 
-    ... (rest of the prompt is the same) ...
+    You are an expert learning and curriculum designer, providing **highly concise and actionable** insights to improve a coding education platform. Analyze the following lesson concept analyses.
+    Identify:
+    1.  **Top 3 Key Challenges**: Identify the top 3 most significant, recurring challenges or areas of difficulty students are facing across all lessons, based on the combined lesson analyses. Focus on actionable curriculum improvements to address these.
+    2.  **Lesson-Specific Opportunity Insights for Coaches**: For each lesson, extract 2-3 key insights that coaches can use to better support students in those specific lessons. These should be very specific and actionable for coaches.
+
+    Format your output as follows:
+
+    Part 1: Executive Summary - Top Curriculum Improvement Priorities
+
+    ### [Key Challenge 1]
+    - **Description:** [Concise description of the challenge]
+    - **Example:** [Brief example illustrating the challenge]
+    - **Severity Level:** [High/Medium/Low]
+    - **Actionable Recommendation:** [Specific, actionable recommendation to address this challenge in the curriculum]
+
+    ### [Key Challenge 2]
+    - **Description:** [Concise description of the challenge]
+    - **Example:** [Brief example illustrating the challenge]
+    - **Severity Level:** [High/Medium/Low]
+    - **Actionable Recommendation:** [Specific, actionable recommendation to address this challenge in the curriculum]
+
+    ### [Key Challenge 3]
+    - **Description:** [Concise description of the challenge]
+    - **Example:** [Brief example illustrating the challenge]
+    - **Severity Level:** [High/Medium/Low]
+    - **Actionable Recommendation:** [Specific, actionable recommendation to address this challenge in the curriculum]
+
+
+    Part 2: PRIORITIZED Lesson-Specific Opportunity Insights for Coaches
+
+    **Lesson Title:** [Lesson Title 1]
+    - **Opportunity Insights:** [Bulleted list of 2-3 actionable insights for coaches for this lesson]
+
+    **Lesson Title:** [Lesson Title 2]
+    - **Opportunity Insights:** [Bulleted list of 2-3 actionable insights for coaches for this lesson]
+
+    ... (and so on for each lesson)
+
+
+    Combined Lesson Analyses:
+    {combined_analysis_text}
     """
 
     logger.info("Generating overall analysis summary using GPT...")
@@ -60,11 +99,11 @@ def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini
         formatted_output_markdown, executive_summary_table_data = format_executive_summary_table_data(overall_summary=summary_output) # Get table data for Part 1
         formatted_output_markdown_part2, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, "") # overall_summary not needed for Part 2
 
-        return formatted_output_markdown, lesson_insights_table_data, executive_summary_table_data # Return all three
+        return formatted_output_markdown, lesson_insights_table_data, executive_summary_table_data, lesson_analyses_data # Return all four values
 
     except Exception as e:
         logger.error(f"Error during overall analysis summarization with OpenAI: {e}")
-        return None, None, None # Return None for all three values in case of error
+        return None, None, None, None # Return None for all four values in case of error
 
 
 def format_executive_summary_table_data(overall_summary):
@@ -80,7 +119,7 @@ def format_executive_summary_table_data(overall_summary):
     example = None
     severity_level = None
     recommendation = None
-    
+
     for line in summary_lines:
         line = line.strip()
         if line.startswith("### "):
@@ -129,23 +168,54 @@ def format_lesson_insights_for_output(lesson_analyses_data, overall_summary): # 
     output_text = "" # No Markdown output in this function anymore - only table data returned
     lesson_insights_table_data = []
 
-    # ... (rest of the format_lesson_insights_for_output function is the same as before) ...
-    # (Iterate through lesson_analyses_data, extract insights, populate lesson_insights_table_data list)
+    if lesson_analyses_data:
+        output_text += "### Part 2: PRIORITIZED Lesson-Specific Opportunity Insights for Coaches\n\n" # Markdown for Part 2
+        output_text += "These insights are designed to be concise and immediately actionable for coaches, enhancing their support to students in specific lessons.\n\n"
+
+        for lesson_analysis in lesson_analyses_data:
+            lesson_title = lesson_analysis['title']
+            analysis_lines = lesson_analysis['analysis'].split('\n')
+            insights = []
+            collect_insights = False
+
+            for line in analysis_lines:
+                if "Concepts or Topics Students are **Struggling** to Understand:" in line:
+                    collect_insights = True
+                    continue
+                elif "Concepts or Topics Students Seem to **Understand Well**:" in line:
+                    collect_insights = False
+                    break # Stop collecting after struggles, before good understanding for conciseness
+                elif collect_insights and line.strip() and not line.startswith("Examples:"): # Capture insights, not examples
+                    insight = line.strip().replace('- ', '').replace('* ', '') # Clean up insight formatting
+                    if insight: # Only add non-empty insights
+                        insights.append(insight)
+
+            if insights:
+                lesson_insights_table_data.append({
+                    "Lesson Title": lesson_title,
+                    "Opportunity Insights": "\n".join([f"- {insight}" for insight in insights[:3]]) # Take only first 3 insights and format as bullet points
+                })
+                output_text += f"**Lesson Title:** {lesson_title}\n"
+                output_text += "- **Opportunity Insights:**\n"
+                for insight in insights[:3]: # Output only the first 3 insights in markdown
+                    output_text += f"  - {insight}\n"
+                output_text += "\n"
+    else:
+        output_text += "No lesson-specific insights available.\n" # Handle no data case
 
     return output_text, lesson_insights_table_data # Returns empty Markdown output and table data for Part 2
 
 
 if __name__ == "__main__":
     logger.info("Summarization script started.")
-    overall_summary, lesson_analyses_data = summarize_lesson_analyses()
+    overall_summary_markdown, lesson_insights_table_data, executive_summary_table_data, lesson_analyses_data = summarize_lesson_analyses() # Capture lesson_analyses_data
 
-    if overall_summary and lesson_analyses_data:
-        formatted_output_markdown, lesson_insights_table_data, executive_summary_table_data = format_lesson_insights_for_output(lesson_analyses_data, overall_summary) # Get all three return values
+    if overall_summary_markdown and lesson_insights_table_data and executive_summary_table_data and lesson_analyses_data: # Check lesson_analyses_data too
         filepath_markdown = "overall_analysis_summary.md"
 
         try:
             with open(filepath_markdown, "w") as f_md:
-                f_md.write(formatted_output_markdown)
+                f_md.write(overall_summary_markdown)
             logger.info(f"Overall analysis summary (Markdown) saved to: {filepath_markdown}")
         except Exception as e:
             logger.error(f"Error saving overall analysis summary to file: {e}")

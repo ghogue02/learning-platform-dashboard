@@ -210,11 +210,11 @@ def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
     st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
 
-    summary_report, lesson_insights_table_data, executive_summary_table_data = summarize_lesson_analyses() # Get all three return values
+    summary_report, lesson_insights_table_data, executive_summary_table_data, lesson_analyses_data = summarize_lesson_analyses() # Get all four return values
 
     if summary_report:
         with st.spinner("Generating analysis summary..."):
-            formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report)
+            formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report) # Pass lesson_analyses_data
 
             st.subheader("Part 1: Executive Summary - Top Curriculum Improvement Priorities")
             if executive_summary_table_data: # Check if executive_summary_table_data is not empty
@@ -241,7 +241,7 @@ def display_executive_summary_table(summary_table_data):
                      "Example": st.column_config.Column(width="medium"),
                      "Severity Level": st.column_config.Column(width="small"),
                      "Actionable Recommendation": st.column_config.Column(width="large", label="Recommendation") # More user-friendly label
-                 }, 
+                 },
                  hide_index=False, # Show index (Challenge names will be index now)
                  height=350, # Adjusted height
                  use_container_width=True # Make table responsive to container width
@@ -252,11 +252,11 @@ def display_executive_summary_table(summary_table_data):
 def display_lesson_insights_table(lesson_insights_table_data):
     """Displays lesson-specific opportunity insights in a Streamlit DataFrame table."""
     insights_df = pd.DataFrame(lesson_insights_table_data) # Convert data to DataFrame
-    st.dataframe(insights_df, 
+    st.dataframe(insights_df,
                  column_config={ # Display DataFrame as Streamlit table
                      "Lesson Title": st.column_config.Column(width="medium"), # Adjust Lesson Title column width
                      "Opportunity Insights": st.column_config.Column(width="large") # Make "Opportunity Insights" column wider
-                 }, 
+                 },
                  hide_index=True, # Hide index for cleaner look
                  height=300 # Set a fixed height with scrolling
     )
