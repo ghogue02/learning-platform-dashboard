@@ -44,22 +44,30 @@ def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini
         return None, None
 
     prompt = f"""
-    You are an expert learning and curriculum designer for a coding education platform. Analyze these lesson concept analyses (separated by '---START LESSON ANALYSIS---'). 
+    You are an expert learning and curriculum designer, providing **highly concise and actionable** insights to improve a coding education platform. Analyze the following lesson concept analyses. 
 
     Produce a report in Markdown format with two parts:
 
-    **Part 1: Executive Summary - Top Curriculum Improvement Priorities**
+    **Part 1: CONCISE Executive Summary - Top 3 Curriculum Improvement Priorities (MAXIMUM)**
 
-    * Identify the **TOP 3-5 KEY RECURRING CHALLENGES** or areas of struggle across lessons. Focus on fundamental concepts.
-    * For each challenge, include: Description, Example (if available), **Severity Level (High/Medium/Low)**, and **Actionable Recommendations** for curriculum improvement.
+    * Identify the **TOP 3 MOST CRITICAL RECURRING CHALLENGES** or areas of student struggle across lessons. Focus on the **most fundamental and impactful concepts**.
+    * For EACH challenge, provide:
+        *   **Very Concise Description** (1-2 sentences MAX).
+        *   **Illustrative Example** (quote or brief description, if strong examples are available).
+        *   **Severity Level (High/Medium/Low)**.
+        *   **ONE KEY Actionable Recommendation** for curriculum improvement. Focus on the *most impactful* action.
 
-    **Part 2: Detailed Lesson-Specific Opportunity Insights for Coaches**
+    **Part 2: PRIORITIZED Lesson-Specific Opportunity Insights for Coaches (Concise & Actionable)**
 
-    * For EACH lesson, provide a concise bulleted list of "Opportunity Insights for Coaches." 
-    * Each insight should clearly state a student struggle and a coaching suggestion. 
-    * Aim for 1-3 insights per lesson.
+    * For EACH lesson with significant student struggles, provide **up to 3 HIGH-QUALITY, CONCISE, and ACTIONABLE "Opportunity Insights for Coaches"**.  
+    * **Prioritize insights that are supported by *multiple* student messages or clear patterns of struggle** within the lesson analysis.  Exclude insights that are based on very few data points or seem less significant.
+    * Format each insight as a bullet point: "**[Area of Struggle]:** [Concise, actionable suggestion for coaches]."
 
-    Analyses:
+    **Formatting Requirements:** 
+    * Use Markdown for headings, bolding, lists. 
+    * Aim for a *brief, highly focused, and actionable* report.
+
+    Lesson Concept Analyses:
     {combined_analysis_text}
 
     ---END LESSON ANALYSES---
@@ -124,13 +132,21 @@ def format_lesson_insights_for_output(lesson_analyses_data, overall_summary):
 
 
 if __name__ == "__main__":
-    # No more file saving in this script
+    # Re-added file saving logic here:
     logger.info("Summarization script started.")
     overall_summary, lesson_analyses_data = summarize_lesson_analyses()
 
     if overall_summary:
         formatted_output_markdown = format_lesson_insights_for_output(lesson_analyses_data, overall_summary)
-        logger.info("Overall analysis summary generated (Markdown format).")
+        filepath_markdown = "overall_analysis_summary.md" # Define filepath again
+
+        try:
+            with open(filepath_markdown, "w") as f_md: # Open file for writing
+                f_md.write(formatted_output_markdown) # Save Markdown content to file
+            logger.info(f"Overall analysis summary (Markdown) saved to: {filepath_markdown}") # Log success
+
+        except Exception as e:
+            logger.error(f"Error saving overall analysis summary to file: {e}") # Log error if saving fails
     else:
         logger.error("Failed to generate overall analysis summary.")
 
