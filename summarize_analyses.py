@@ -1,7 +1,6 @@
 import pandas as pd
 import openai
 import os
-from datetime import datetime, timedelta
 import logging
 from dotenv import load_dotenv
 from openai import OpenAI, APIError
@@ -132,7 +131,7 @@ if __name__ == "__main__":
     overall_summary, lesson_analyses_data = summarize_lesson_analyses()  # Get both values
 
     if overall_summary and lesson_analyses_data:  # Check both values
-        formatted_output_markdown, lesson_insights_table = format_lesson_insights_for_output(lesson_analyses_data, overall_summary)
+        formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, overall_summary)
         filepath_markdown = "overall_analysis_summary.md"
 
         try:
