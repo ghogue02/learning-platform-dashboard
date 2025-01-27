@@ -233,32 +233,36 @@ def display_analysis_summary():
 
 def display_executive_summary_table(summary_table_data):
     """Displays the Executive Summary in a Streamlit DataFrame table."""
-    summary_df = pd.DataFrame(summary_table_data) # Convert data to DataFrame
-    st.dataframe(summary_df.set_index('Challenge'), # Set 'Challenge' column as index for better readability
-                 column_config={ # Configure columns
-                     "Challenge": st.column_config.Column(label="Key Challenge", width="medium"), # Removed hidden=True
-                     "Description": st.column_config.Column(width="large"),
-                     "Example": st.column_config.Column(width="medium"),
-                     "Severity Level": st.column_config.Column(width="small"),
-                     "Actionable Recommendation": st.column_config.Column(width="large", label="Recommendation") # More user-friendly label
+    summary_df = pd.DataFrame(summary_table_data)
+
+    # Limit to the first 5 rows if there are more
+    summary_df = summary_df.head(5)
+
+    st.dataframe(summary_df.set_index('Challenge'),
+                 column_config={
+                     # "Challenge" column is now the index, so no need to configure as a column
+                     "Description": st.column_config.Column(width="large", max_width=None, use_container_width=True,  label="Description"), # Renamed header, word wrap
+                     "Example": st.column_config.Column(width="medium", max_width=None, use_container_width=True, ), # Word wrap
+                     "Severity Level": st.column_config.Column(width="small", max_width=None, use_container_width=True,), # Word wrap
+                     "Actionable Recommendation": st.column_config.Column(width="large", max_width=None, use_container_width=True, label="Recommendation") # Word wrap
                  },
-                 hide_index=False, # Show index (Challenge names will be index now)
-                 height=350, # Adjusted height
-                 use_container_width=True # Make table responsive to container width
-    ) # Display DataFrame as Streamlit table
+                 hide_index=False, # Keep index visible (Challenge names)
+                 height=350,
+                 use_container_width=True
+    )
 
 
 
 def display_lesson_insights_table(lesson_insights_table_data):
     """Displays lesson-specific opportunity insights in a Streamlit DataFrame table."""
-    insights_df = pd.DataFrame(lesson_insights_table_data) # Convert data to DataFrame
+    insights_df = pd.DataFrame(lesson_insights_table_data)
     st.dataframe(insights_df,
-                 column_config={ # Display DataFrame as Streamlit table
-                     "Lesson Title": st.column_config.Column(width="medium"), # Adjust Lesson Title column width
-                     "Opportunity Insights": st.column_config.Column(width="large") # Make "Opportunity Insights" column wider
+                 column_config={
+                     "Lesson Title": st.column_config.Column(width="medium", max_width=None, use_container_width=True), # Word wrap
+                     "Opportunity Insights": st.column_config.Column(width="large", max_width=None, use_container_width=True) # Word wrap
                  },
-                 hide_index=True, # Hide index for cleaner look
-                 height=300 # Set a fixed height with scrolling
+                 hide_index=True,
+                 height=300
     )
 
 
