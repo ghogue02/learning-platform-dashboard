@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 import logging
 from openai import OpenAI, APIError
 import markdown  # Import the markdown library
+from sqlalchemy import create_engine  # Add this import
+import streamlit as st  # Add this since st.write is used
 
 # Configure logging globally
 logging.basicConfig(level=logging.INFO)
@@ -13,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
+DB_URL = os.getenv("DB_URL")
+st.write(f"DB_URL from Secrets: {DB_URL}")  # Added debug output
+engine = create_engine(DB_URL)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # We only need OPENAI_API_KEY for summarization
 openai.api_key = OPENAI_API_KEY
 
