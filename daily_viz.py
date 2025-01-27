@@ -210,8 +210,8 @@ def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
     st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
 
-    summary_report, lesson_insights_table_data, executive_summary_table_data = summarize_lesson_analyses() # Get all three return values
-
+    summary_report, lesson_insights_table_data = summarize_lesson_analyses() # Expecting TWO values now - CORRECT for now
+# summary_report, lesson_insights_table_data, executive_summary_table_data = summarize_lesson_analyses() # Original line - comment out
     if summary_report:
         with st.spinner("Generating analysis summary..."):
             formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report)
