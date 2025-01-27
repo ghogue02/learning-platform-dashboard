@@ -236,7 +236,7 @@ def display_executive_summary_table(summary_table_data):
     summary_df = pd.DataFrame(summary_table_data) # Convert data to DataFrame
     st.dataframe(summary_df.set_index('Challenge'), # Set 'Challenge' column as index for better readability
                  column_config={ # Configure columns
-                     "Challenge": st.column_config.Column(label="Key Challenge", width="medium", hidden=True), # Hidden index column with label
+                     "Challenge": st.column_config.Column(label="Key Challenge", width="medium"), # Removed hidden=True
                      "Description": st.column_config.Column(width="large"),
                      "Example": st.column_config.Column(width="medium"),
                      "Severity Level": st.column_config.Column(width="small"),
