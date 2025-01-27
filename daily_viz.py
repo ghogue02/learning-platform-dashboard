@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 DB_URL = os.getenv("DB_URL")
+st.write(f"DB_URL from Secrets: {DB_URL}")  # Added debug output
+engine = create_engine(DB_URL)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Initialize OpenAI
