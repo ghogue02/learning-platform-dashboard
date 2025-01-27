@@ -48,7 +48,7 @@ def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini
 
     Produce a report in Markdown format with two parts:
 
-    **Part 1: Executive Summary of Top Curriculum Improvement Priorities**
+    **Part 1: Executive Summary - Top Curriculum Improvement Priorities**
 
     * Identify the **TOP 3-5 KEY RECURRING CHALLENGES** or areas of struggle across lessons. Focus on fundamental concepts.
     * For each challenge, include: Description, Example (if available), **Severity Level (High/Medium/Low)**, and **Actionable Recommendations** for curriculum improvement.
@@ -124,19 +124,13 @@ def format_lesson_insights_for_output(lesson_analyses_data, overall_summary):
 
 
 if __name__ == "__main__":
-    summary_report, lesson_analyses_data = summarize_lesson_analyses()
+    # No more file saving in this script
+    logger.info("Summarization script started.")
+    overall_summary, lesson_analyses_data = summarize_lesson_analyses()
 
-    if summary_report:
-        formatted_output_markdown = format_lesson_insights_for_output(lesson_analyses_data, summary_report)
-        filepath_markdown = "overall_analysis_summary.md"
-
-        try:
-            with open(filepath_markdown, "w") as f_md:
-                f_md.write(formatted_output_markdown)
-            logger.info(f"Overall analysis summary (Markdown) saved to: {filepath_markdown}")
-
-        except Exception as e:
-            logger.error(f"Error saving overall analysis summary to file: {e}")
+    if overall_summary:
+        formatted_output_markdown = format_lesson_insights_for_output(lesson_analyses_data, overall_summary)
+        logger.info("Overall analysis summary generated (Markdown format).")
     else:
         logger.error("Failed to generate overall analysis summary.")
 

@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 import logging
 from openai import OpenAI, APIError  # Correct import for APIError
-from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output # Import the function
+from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output # Import summary functions
 
 # ENSURE set_page_config IS THE FIRST STREAMLIT COMMAND
 st.set_page_config(
@@ -177,20 +177,20 @@ def display_metrics_dashboard(engine):
                             analysis_output = analyze_lesson_content(engine, lesson_id, lesson_title, analyze_ai_responses=analyze_ai_responses) # Pass analyze_ai_responses
 
                             if analysis_output: # Check if analysis output is not None (success)
-                                st.subheader("Concept Analysis:")
+                                st.subheader(f"Concept Analysis for Lesson: '{lesson_title}'") # Subheader for each lesson analysis - placed INSIDE expander now
                                 st.write(analysis_output) # Display analysis output within expander - FULL WIDTH
 
                                 messages_df = get_lesson_messages_for_concept_analysis(engine, lesson_id=lesson_id, include_ai_responses=analyze_ai_responses) # Re-fetch messages
                                 if not messages_df.empty:
                                     sample_size = 500
                                     sample_df = messages_df.head(sample_size)
-                                    st.subheader(f"Message Activity Timeline (Sample - {min(sample_size, len(messages_df))} messages):") # Display sample size in subheader
+                                    st.subheader(f"Message Activity Timeline (Sample - {min(sample_size, len(messages_df))} messages):") # Subheader inside expander
                                     timeline_df = sample_df.set_index('created_at')
                                     timeline_df['count'] = 1
                                     daily_counts = timeline_df['count'].resample('D').sum()
                                     st.line_chart(daily_counts)
 
-                                    st.subheader(f"Lesson Message Content (Sample - {min(sample_size, len(messages_df))} messages - User and AI):") # Display sample size in subheader
+                                    st.subheader(f"Lesson Message Content (Sample - {min(sample_size, len(messages_df))} messages - User and AI):") # Subheader inside expander
                                     st.dataframe(sample_df[['created_at', 'role', 'content']])
                             else:
                                 st.error("Analysis failed. Check logs for details.") # Error message within expander
@@ -209,27 +209,14 @@ def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
     st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
 
-    summary_prompt, lesson_analyses_data = summarize_lesson_analyses() # Get prompt and lesson data
+    summary_report, lesson_analyses_data = summarize_lesson_analyses() # Get summary and lesson data dynamically
 
-    if summary_prompt:
+    if summary_report:
         with st.spinner("Generating analysis summary..."): # Show spinner while generating
-            try:
-                response = openai.chat.completions.create( # Call OpenAI API to get summary
-                    model="gpt-4o-mini", # Or your preferred model
-                    messages=[{"role": "user", "content": summary_prompt}],
-                    temperature=0.7
-                )
-                analysis_summary_markdown = response.choices[0].message.content # Get Markdown summary from response
-                
-                formatted_output = format_lesson_insights_for_output(lesson_analyses_data, analysis_summary_markdown) # Format with lesson insights
-
-                st.markdown(formatted_output) # Display Markdown summary in Streamlit
-
-            except Exception as e:
-                logger.error(f"Error generating analysis summary from OpenAI: {e}")
-                st.error("Error generating analysis summary. Please check logs.")
+            formatted_output_markdown = format_lesson_insights_for_output(lesson_analyses_data, summary_report) # Format with lesson insights
+            st.markdown(formatted_output_markdown) # Display Markdown summary in Streamlit
     else:
-        st.info("No lesson analysis files found to summarize. Run weekly analysis first.")
+        st.info("No lesson analysis files found to summarize. Run weekly analysis script to generate the summary.")
 
 
 
