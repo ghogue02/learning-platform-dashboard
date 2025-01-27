@@ -21,9 +21,8 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 #load_dotenv()
-# DB_URL = os.getenv("DB_URL")  # Comment out this line
 DB_URL = os.environ.get("DB_URL") # Use os.environ.get instead
-st.write(f"DB_URL from Secrets (os.environ): {DB_URL}") # Updated message
+
 engine = create_engine(DB_URL)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
