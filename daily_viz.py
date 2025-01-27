@@ -347,11 +347,34 @@ def display_analysis_summary():
     analysis_html_filepath = "overall_analysis_summary.html" # Path to your HTML summary file
 
     if os.path.exists(analysis_html_filepath):
-        with open(analysis_html_filepath, "r", encoding="utf-8") as f: # Open HTML file, specify encoding
+        with open(analysis_html_filepath, "r", encoding="utf-8") as f: # Open HTML file
             analysis_html = f.read()
-            from streamlit.components.v1 import html # Import streamlit html component
-            html(analysis_html, height=800, scrolling=True) # Display HTML in Streamlit
 
+            # Basic CSS styling - you can customize this further
+            styled_html = f"""
+            <style>
+                body {{
+                    color: white; /* Or your desired text color for dark mode */
+                    background-color: #1e1e1e; /* Or your desired background color for dark mode */
+                }}
+                h1, h2, h3, h4, h5, h6 {{
+                    color: lightblue; /* Style for headings */
+                }}
+                ul, ol {{
+                    list-style-type: disc; /* Style for lists */
+                    margin-left: 20px;
+                }}
+                body {{
+                    font-family: sans-serif; /* Example font */
+                    font-size: 16px;
+                    line-height: 1.6;
+                }}
+            </style>
+            {analysis_html}
+            """
+
+            from streamlit.components.v1 import html # Import streamlit html component
+            html(styled_html, height=800, scrolling=True) # Display styled HTML in Streamlit
     else:
         st.error(f"Analysis summary file not found: '{analysis_html_filepath}'. Please run the weekly analysis script to generate the summary.")
 
