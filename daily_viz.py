@@ -210,17 +210,16 @@ def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
     st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
 
-    summary_report, lesson_insights_table_data = summarize_lesson_analyses() # Get summary and table data dynamically
+    summary_report, lesson_analyses_data = summarize_lesson_analyses()  # Get both values
 
     if summary_report:
-        with st.spinner("Generating analysis summary..."): # Show spinner while generating
-            formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report) # Get Markdown and table data
-            st.markdown(formatted_output_markdown) # Display Executive Summary (Part 1) in Markdown
+        with st.spinner("Generating analysis summary..."):
+            formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report)  # Pass lesson_analyses_data
+            st.markdown(formatted_output_markdown)
 
-            if lesson_insights_table_data: # Check if there's table data to display
-                st.subheader("Lesson-Specific Opportunity Insights for Coaches") # Subheader for table
-                display_lesson_insights_table(lesson_insights_table_data) # Call function to display table
-
+            if lesson_insights_table_data:
+                st.subheader("Lesson-Specific Opportunity Insights for Coaches")
+                display_lesson_insights_table(lesson_insights_table_data)
     else:
         st.info("No lesson analysis files found to summarize. Run weekly analysis script to generate the summary.")
 

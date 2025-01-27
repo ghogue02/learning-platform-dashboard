@@ -128,21 +128,19 @@ def format_lesson_insights_for_output(lesson_analyses_data, overall_summary):
 
 
 if __name__ == "__main__":
-    # No more Streamlit code here
     logger.info("Summarization script started.")
-    overall_summary, lesson_insights_table_data = summarize_lesson_analyses() # Get both summary and table data
+    overall_summary, lesson_analyses_data = summarize_lesson_analyses()  # Get both values
 
-    if overall_summary:
-        formatted_output_markdown, _ = format_lesson_insights_for_output(lesson_analyses_data, overall_summary) # Corrected argument order!
-        filepath_markdown = "overall_analysis_summary.md" # Define filepath
+    if overall_summary and lesson_analyses_data:  # Check both values
+        formatted_output_markdown, lesson_insights_table = format_lesson_insights_for_output(lesson_analyses_data, overall_summary)
+        filepath_markdown = "overall_analysis_summary.md"
 
         try:
-            with open(filepath_markdown, "w") as f_md: # Open file for writing
-                f_md.write(formatted_output_markdown) # Save Markdown content to file
-            logger.info(f"Overall analysis summary (Markdown) saved to: {filepath_markdown}") # Log success
-
+            with open(filepath_markdown, "w") as f_md:
+                f_md.write(formatted_output_markdown)
+            logger.info(f"Overall analysis summary (Markdown) saved to: {filepath_markdown}")
         except Exception as e:
-            logger.error(f"Error saving overall analysis summary to file: {e}") # Log error if saving fails
+            logger.error(f"Error saving overall analysis summary to file: {e}")
     else:
         logger.error("Failed to generate overall analysis summary.")
 
