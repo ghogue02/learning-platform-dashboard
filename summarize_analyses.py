@@ -133,8 +133,7 @@ if __name__ == "__main__":
     overall_summary, lesson_insights_table_data = summarize_lesson_analyses() # Get both summary and table data
 
     if overall_summary:
-        formatted_output_markdown, _ = format_lesson_insights_for_output(lesson_analyses_data, overall_summary) # Format for Markdown - we don't need table data here in file
-
+        formatted_output_markdown, _ = format_lesson_insights_for_output(lesson_analyses_data, overall_summary) # Corrected argument order!
         filepath_markdown = "overall_analysis_summary.md" # Define filepath
 
         try:
