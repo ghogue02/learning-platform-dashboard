@@ -20,8 +20,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Load environment variables
-#load_dotenv()
-DB_URL = os.environ.get("DB_URL") # Use os.environ.get instead
+#load_dotenv() # No load_dotenv() for Streamlit Cloud
+DB_URL = os.environ.get("DB_URL") # Use os.environ.get() for Streamlit Cloud Secrets
 
 engine = create_engine(DB_URL)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -33,11 +33,11 @@ openai.api_key = OPENAI_API_KEY
 def main():
     st.title("Learning Platform Analytics Dashboard")
 
-    # Create DB engine inside main()
+    # Create DB engine inside main() - moved inside main for clarity, though defined globally is also fine in this case
     engine = create_engine(DB_URL)
 
     # Sidebar Menu
-    menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis"]
+    menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis", "Analysis Summary"] # Added "Analysis Summary"
     choice = st.sidebar.selectbox("Navigation", menu)
 
     if choice == "Metrics Dashboard":
@@ -46,6 +46,8 @@ def main():
         display_user_leaderboard(engine)
     elif choice == "Content Analysis":
         display_content_analysis(engine)
+    elif choice == "Analysis Summary": # New section
+        display_analysis_summary()
 
 
 def display_metrics_dashboard(engine):
@@ -310,20 +312,20 @@ def display_content_analysis(engine):
                             analysis_output = analyze_lesson_content(engine, lesson_id, lesson_title, analyze_ai_responses=analyze_ai_responses) # Pass analyze_ai_responses
 
                             if analysis_output: # Check if analysis output is not None (success)
-                                st.subheader("Concept Analysis:")
+                                st.subheader(f"Concept Analysis for Lesson: '{lesson_title}'") # Subheader for each lesson analysis - placed INSIDE expander now
                                 st.write(analysis_output) # Display analysis output within expander - FULL WIDTH
 
                                 messages_df = get_lesson_messages_for_concept_analysis(engine, lesson_id=lesson_id, include_ai_responses=analyze_ai_responses) # Re-fetch messages
                                 if not messages_df.empty:
                                     sample_size = 500
                                     sample_df = messages_df.head(sample_size)
-                                    st.subheader(f"Message Activity Timeline (Sample - {min(sample_size, len(messages_df))} messages):") # Display sample size in subheader
+                                    st.subheader(f"Message Activity Timeline (Sample - {min(sample_size, len(messages_df))} messages):") # Subheader inside expander
                                     timeline_df = sample_df.set_index('created_at')
                                     timeline_df['count'] = 1
                                     daily_counts = timeline_df['count'].resample('D').sum()
                                     st.line_chart(daily_counts)
 
-                                    st.subheader(f"Lesson Message Content (Sample - {min(sample_size, len(messages_df))} messages - User and AI):") # Display sample size in subheader
+                                    st.subheader(f"Lesson Message Content (Sample - {min(sample_size, len(messages_df))} messages - User and AI):") # Subheader inside expander
                                     st.dataframe(sample_df[['created_at', 'role', 'content']])
                             else:
                                 st.error("Analysis failed. Check logs for details.") # Error message within expander
@@ -335,6 +337,82 @@ def display_content_analysis(engine):
     except Exception as e:
         logger.error(f"Error fetching lesson breakdown for content analysis: {e}")
         st.error("Error fetching lesson data for content analysis.")
+
+
+
+def display_analysis_summary():
+    st.header("Overall Lesson Analysis Summary")
+    st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
+
+    analysis_html_filepath = "overall_analysis_summary.html" # Path to your HTML summary file
+
+    if os.path.exists(analysis_html_filepath):
+        with open(analysis_html_filepath, "r", encoding="utf-8") as f: # Open HTML file, specify encoding
+            analysis_html = f.read()
+            from streamlit.components.v1 import html # Import streamlit html component
+            html(analysis_html, height=800, scrolling=True) # Display HTML in Streamlit
+
+    else:
+        st.error(f"Analysis summary file not found: '{analysis_html_filepath}'. Please run the weekly analysis script to generate the summary.")
+
+
+def display_user_leaderboard(engine):
+    st.header("User Leaderboard")
+    st.write("Note: 'Universal Chat Messages' count is approximated and may not be perfectly accurate without a clear distinction in the database.")
+
+    time_ranges = {
+        "All Time": 999999,
+        "Last 7 Days": 7,
+        "Last 30 Days": 30
+    }
+    selected_range = st.selectbox("Time Range for Completions", list(time_ranges.keys()))
+    days_back = time_ranges[selected_range]
+
+    if selected_range == "All Time":
+        start_time = datetime(1970, 1, 1)
+    else:
+        start_time = datetime.now() - timedelta(days=days_back)
+
+    leaderboard_query = text("""
+        SELECT
+            u.first_name,
+            u.last_name,
+            COUNT(DISTINCT ls.lesson_id) AS lessons_completed,
+            COALESCE(SUM(
+                CASE
+                    WHEN EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60 > 120 THEN 120
+                    ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
+                END
+            ), 0) as time_spent_minutes,
+            -- Count lesson messages from lesson_session_messages for each user
+            (SELECT COUNT(*) FROM lesson_session_messages lsm
+             INNER JOIN lesson_sessions ls_sub ON lsm.session_id = ls_sub.session_id
+             WHERE ls_sub.user_id = u.user_id AND (ls_sub.created_at >= :start_time OR ls_sub.updated_at >= :start_time)) as lesson_messages,
+            -- Count universal chat messages from conversation_messages for each user
+            (SELECT COUNT(*) FROM conversation_messages cm
+             WHERE cm.user_id = u.user_id AND cm.message_role = 'user' AND cm.created_at >= :start_time) as universal_chat_messages,
+            MAX(ls.updated_at) as last_activity_time,
+            COUNT(DISTINCT ls.session_id) FILTER (WHERE ls.updated_at >= :start_time) AS active_sessions_count
+        FROM users u
+        LEFT JOIN lesson_sessions ls ON u.user_id = ls.user_id AND ls.status = 'completed' AND ls.updated_at >= :start_time
+        GROUP BY u.user_id, u.first_name, u.last_name
+        ORDER BY lessons_completed DESC
+        LIMIT 20
+    """)
+
+    try:
+        with engine.connect() as conn:
+            df_leaderboard = pd.read_sql_query(leaderboard_query, conn, params={"start_time": start_time})
+
+        df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time)
+        df_leaderboard['time_since_last_activity'] = df_leaderboard['last_activity_time'].apply(format_time_since_activity)
+
+        st.dataframe(df_leaderboard[['first_name', 'last_name', 'lessons_completed', 'time_spent_learning', 'lesson_messages', 'universal_chat_messages', 'active_sessions_count', 'time_since_last_activity']], height=800)
+
+    except Exception as e:
+        logger.error(f"Error fetching leaderboard: {e}")
+        st.error("Failed to load leaderboard data.")
+
 
 
 def analyze_lesson_content(engine, lesson_id, lesson_title, sample_size=500, retry_count=0, max_retries=3, analyze_ai_responses=False): # Added analyze_ai_responses to params
