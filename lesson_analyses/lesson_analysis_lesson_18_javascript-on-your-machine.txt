@@ -1,0 +1,37 @@
+Analysis for Lesson: 'javascript-on-your-machine' (Lesson ID: 18)
+
+Based on the analysis of the student messages from the lesson titled "javascript-on-your-machine," here are the findings:
+
+### 1. Concepts or Topics Students Are Struggling to Understand
+- **Command Line Arguments**: Students often express confusion regarding the use of `process.argv` to access command line arguments. They struggle to differentiate between using `process.argv` and `process.argv[2]`, and some students have difficulty understanding what values these properties hold.
+  - *Example*: A student stated, "i dont understand how to access the input here you say to access the input using process.argv so i ran both in the command line its worked with process.argv[2] but not with process.argv."
+  
+- **Functions and Control Structures**: Some students are struggling with understanding how functions work, especially when it comes to returning values versus printing them. They sometimes have a hard time grasping the concept of functions returning values and how to properly use loops and conditionals inside functions.
+  - *Example*: A student said, "i was unable to do this one. i had to look it up."
+
+### 2. Concepts or Topics Students Seem to Understand Well
+- **Basic Node.js Functionality**: Students generally show a solid understanding of how to create and run simple JavaScript files using Node.js. They can utilize the `console.log()` function effectively to display output.
+  - *Example*: "It worked!" after running a simple JavaScript file.
+  
+- **Using Express.js for Routing**: Students demonstrate comprehension in using Express.js for basic routing functionality, including handling GET and POST requests.
+  - *Example*: A student articulated the routing process well, showing an understanding of how to serve HTML files and handle form submissions.
+
+### 3. Specific Examples or Quotes
+- **Struggles**:
+  - "i dont understand this. process.argv[2] = christine process.argv[0] be node process.argv[1] = greet im having trouble understand thing."
+  - "i was unable to do this one. i had to look it up Exercise 3: Write a function named printMultiples that takes a number as a parameter and prints its multiples from 1 to 10."
+
+- **Understanding**:
+  - "Hello, World!" output after running a `console.log()` statement.
+  - "Thanks! That worked!" in response to troubleshooting the server setup.
+
+### 4. Summary of Main Areas of Struggle and Understanding
+- **Struggle Areas**: 
+  - Students have difficulty with command line arguments (`process.argv`) and how to effectively use them in their scripts.
+  - There is some confusion around function returns and the use of loops and conditionals within functions.
+
+- **Understanding Areas**: 
+  - Students are successfully able to create and run basic Node.js scripts and demonstrate a good grasp of Express.js routing.
+  - They can effectively use `console.log()` to display output in the terminal.
+
+Overall, students are progressing well, but additional support and clarification on command line arguments and functions may help solidify their understanding as they continue to learn Node.js and JavaScript.
