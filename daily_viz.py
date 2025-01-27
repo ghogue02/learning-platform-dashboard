@@ -34,7 +34,7 @@ openai.api_key = OPENAI_API_KEY
 
 def main():
     st.title("Learning Platform Analytics Dashboard")
-
+    st.write(f"Streamlit version: **{st.__version__}**")
     # Create DB engine inside main()
     engine = create_engine(DB_URL)
 
