@@ -9,6 +9,7 @@ import logging
 from openai import OpenAI, APIError  # Correct import for APIError
 from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output # Import summary functions
 
+
 # ENSURE set_page_config IS THE FIRST STREAMLIT COMMAND
 st.set_page_config(
     page_title="Learning Platform Analytics Dashboard",
@@ -209,15 +210,27 @@ def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
     st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
 
-    summary_report, lesson_analyses_data = summarize_lesson_analyses() # Get summary and lesson data dynamically
+    summary_report, lesson_insights_table_data = summarize_lesson_analyses() # Get summary and table data dynamically
 
     if summary_report:
         with st.spinner("Generating analysis summary..."): # Show spinner while generating
-            formatted_output_markdown = format_lesson_insights_for_output(lesson_analyses_data, summary_report) # Format with lesson insights
-            st.markdown(formatted_output_markdown) # Display Markdown summary in Streamlit
+            formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report) # Get Markdown and table data
+            st.markdown(formatted_output_markdown) # Display Executive Summary (Part 1) in Markdown
+
+            if lesson_insights_table_data: # Check if there's table data to display
+                st.subheader("Lesson-Specific Opportunity Insights for Coaches") # Subheader for table
+                display_lesson_insights_table(lesson_insights_table_data) # Call function to display table
+
     else:
         st.info("No lesson analysis files found to summarize. Run weekly analysis script to generate the summary.")
 
+
+def display_lesson_insights_table(lesson_insights_table_data):
+    """Displays lesson-specific opportunity insights in a Streamlit DataFrame table."""
+    insights_df = pd.DataFrame(lesson_insights_table_data) # Convert data to DataFrame
+    st.dataframe(insights_df, column_config={ # Display DataFrame as Streamlit table
+        "Opportunity Insights": st.column_config.Column(width="large") # Make "Opportunity Insights" column wider
+    }, hide_index=True) # Hide index for cleaner look
 
 
 def display_user_leaderboard(engine):

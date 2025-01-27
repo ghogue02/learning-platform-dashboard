@@ -19,7 +19,7 @@ openai.api_key = OPENAI_API_KEY
 def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini"):
     """
     Reads lesson analysis files, summarizes them using GPT, and provides prioritized recommendations,
-    returning the summary in Markdown format.
+    returning the summary in Markdown format and lesson insights data.
     """
     combined_analysis_text = ""
     lesson_analyses_data = []  # List to store lesson analysis data
@@ -89,12 +89,15 @@ def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini
 
 
 def format_lesson_insights_for_output(lesson_analyses_data, overall_summary):
-    """Formats lesson-specific insights for Markdown output."""
+    """Formats lesson-specific insights for Markdown output. Returns table data, not Streamlit table."""
     output_text = "## Overall Learning Platform Content Analysis Summary and Recommendations\n\n"
     output_text += "### Part 1: Executive Summary - Top Curriculum Improvement Priorities\n\n"
     output_text += overall_summary + "\n\n"
 
-    output_text += "### Part 2: Detailed Lesson-Specific Opportunity Insights for Coaches\n\n"
+    output_text += "### Part 2: **Concise** Lesson-Specific Opportunity Insights for Coaches\n\n" # Corrected subheader
+
+    lesson_insights_table_data = [] # List to store data for table
+
     for lesson_data in lesson_analyses_data:
         lesson_title = lesson_data["title"]
         analysis_content = lesson_data["analysis"]
@@ -115,30 +118,24 @@ def format_lesson_insights_for_output(lesson_analyses_data, overall_summary):
                 if line.startswith("- ") and "Struggling" not in line and "Concepts or Topics" not in line:
                     insight_text = line[2:].strip()
                     if insight_text:
-                        struggles_insights.append(insight_text)
+                        # Prioritize and shorten insights for table - select top 2 concise insights
+                        top_insights = struggles_insights[:2] # Get max top 2 insights - adjust as needed
+                        concise_insights = ["- " + insight[:80] + "..." if len(insight) > 80 else "- " + insight for insight in top_insights] # Shorten insights, limit to ~80 chars
+                        lesson_insights_table_data.append({"Lesson Title": lesson_title, "Opportunity Insights": "\n".join(concise_insights)}) # Add to table data
 
-            if struggles_insights:
-                output_text += "#### Opportunity Insights for Coaches:\n"
-                for insight in struggles_insights:
-                    output_text += f"- {insight}\n"
-            else:
-                output_text += "- No specific student struggles identified in the analysis for this lesson.\n"
-        else:
-            output_text += "- No student struggles data found in the analysis for this lesson. Review full analysis file for details.\n"
 
-        output_text += "\n"
-
-    return output_text
+    return output_text, lesson_insights_table_data # Return both Markdown output and table data
 
 
 if __name__ == "__main__":
-    # Re-added file saving logic here:
+    # No more Streamlit code here
     logger.info("Summarization script started.")
-    overall_summary, lesson_analyses_data = summarize_lesson_analyses()
+    overall_summary, lesson_insights_table_data = summarize_lesson_analyses() # Get both summary and table data
 
     if overall_summary:
-        formatted_output_markdown = format_lesson_insights_for_output(lesson_analyses_data, overall_summary)
-        filepath_markdown = "overall_analysis_summary.md" # Define filepath again
+        formatted_output_markdown, _ = format_lesson_insights_for_output(lesson_analyses_data, overall_summary) # Format for Markdown - we don't need table data here in file
+
+        filepath_markdown = "overall_analysis_summary.md" # Define filepath
 
         try:
             with open(filepath_markdown, "w") as f_md: # Open file for writing
