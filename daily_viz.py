@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 import logging
 from openai import OpenAI, APIError  # Correct import for APIError
-from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output # Import summary functions
+from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output, display_lesson_insights_table
 
 
 # ENSURE set_page_config IS THE FIRST STREAMLIT COMMAND
@@ -210,19 +210,19 @@ def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
     st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
 
-    summary_report, lesson_insights_table_data = summarize_lesson_analyses() # Get summary and table data dynamically
-
+    summary_report, lesson_analyses_data = summarize_lesson_analyses()  # Get both values
+    
     if summary_report:
-        with st.spinner("Generating analysis summary..."): # Show spinner while generating
-            formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report) # Format with lesson insights
+        with st.spinner("Generating analysis summary..."):
+            formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report)  # Use lesson_analyses_data from above
+            
+            st.subheader("Part 1: Executive Summary - Top Curriculum Improvement Priorities")
+            st.markdown(formatted_output_markdown)
 
-            st.subheader("Part 1: Executive Summary - Top Curriculum Improvement Priorities") # Subheader for Part 1
-            st.markdown(formatted_output_markdown) # Display Executive Summary (Part 1) in Markdown - FULL WIDTH
-
-            if lesson_insights_table_data: # Check if there's table data to display
-                with st.expander("Part 2: Lesson-Specific Opportunity Insights for Coaches (Click to Expand)", expanded=False): # Expander for Part 2
-                    st.write("Detailed, lesson-specific insights and actionable suggestions for coaches. Expand to view.") # Hint text inside expander
-                    display_lesson_insights_table(lesson_insights_table_data) # Call function to display table inside expander
+            if lesson_insights_table_data:
+                with st.expander("Part 2: Lesson-Specific Opportunity Insights for Coaches (Click to Expand)", expanded=False):
+                    st.write("Detailed, lesson-specific insights and actionable suggestions for coaches. Expand to view.")
+                    display_lesson_insights_table(lesson_insights_table_data)
 
 
     else:
