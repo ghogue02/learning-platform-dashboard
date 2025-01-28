@@ -1,0 +1,139 @@
+// Database Schema
+digraph database_schema {
+	node [fontname=Arial fontsize=10 shape=box]
+	users [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>users</B></TD></TR>
+<TR><TD ALIGN="LEFT">user_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">first_name<BR/><FONT POINT-SIZE="8">VARCHAR(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">last_name<BR/><FONT POINT-SIZE="8">VARCHAR(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">email<BR/><FONT POINT-SIZE="8">VARCHAR(100)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">password_hash<BR/><FONT POINT-SIZE="8">VARCHAR(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">created_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">initial_intake<BR/><FONT POINT-SIZE="8">BOOLEAN</FONT></TD></TR>
+</TABLE>>]
+	threads [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>threads</B></TD></TR>
+<TR><TD ALIGN="LEFT">thread_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">user_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">title<BR/><FONT POINT-SIZE="8">VARCHAR(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">created_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">updated_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+</TABLE>>]
+	conversation_messages [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>conversation_messages</B></TD></TR>
+<TR><TD ALIGN="LEFT">message_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">user_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">thread_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">content<BR/><FONT POINT-SIZE="8">TEXT</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">created_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">message_role<BR/><FONT POINT-SIZE="8">VARCHAR(9)</FONT></TD></TR>
+</TABLE>>]
+	lesson_sessions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>lesson_sessions</B></TD></TR>
+<TR><TD ALIGN="LEFT">session_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">user_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">lesson_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">status<BR/><FONT POINT-SIZE="8">VARCHAR(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">lab_status<BR/><FONT POINT-SIZE="8">VARCHAR(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">created_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">updated_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+</TABLE>>]
+	units [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>units</B></TD></TR>
+<TR><TD ALIGN="LEFT">unit_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">title<BR/><FONT POINT-SIZE="8">VARCHAR(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">description<BR/><FONT POINT-SIZE="8">TEXT</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">created_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">updated_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+</TABLE>>]
+	lessons [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>lessons</B></TD></TR>
+<TR><TD ALIGN="LEFT">lesson_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">path<BR/><FONT POINT-SIZE="8">VARCHAR(500)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">title<BR/><FONT POINT-SIZE="8">VARCHAR(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">content<BR/><FONT POINT-SIZE="8">TEXT</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">github_url<BR/><FONT POINT-SIZE="8">VARCHAR(500)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">unit_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">lab_url<BR/><FONT POINT-SIZE="8">VARCHAR(500)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">is_first_lesson<BR/><FONT POINT-SIZE="8">BOOLEAN</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">created_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">updated_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+</TABLE>>]
+	submissions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>submissions</B></TD></TR>
+<TR><TD ALIGN="LEFT">submission_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">user_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">lesson_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">unit_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">lab_url<BR/><FONT POINT-SIZE="8">VARCHAR(500)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">type<BR/><FONT POINT-SIZE="8">VARCHAR(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">ai_feedback<BR/><FONT POINT-SIZE="8">TEXT</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">grade<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">created_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">submission_version<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+</TABLE>>]
+	lesson_session_messages [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>lesson_session_messages</B></TD></TR>
+<TR><TD ALIGN="LEFT">message_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">session_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">role<BR/><FONT POINT-SIZE="8">VARCHAR(10)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">content<BR/><FONT POINT-SIZE="8">TEXT</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">created_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+</TABLE>>]
+	lesson_sequence [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>lesson_sequence</B></TD></TR>
+<TR><TD ALIGN="LEFT">sequence_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">unit_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">lesson_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">prerequisite_lesson_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">sequence_order<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+</TABLE>>]
+	user_progress [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>user_progress</B></TD></TR>
+<TR><TD ALIGN="LEFT">progress_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">user_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">lesson_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">unit_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">is_unlocked<BR/><FONT POINT-SIZE="8">BOOLEAN</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">is_completed<BR/><FONT POINT-SIZE="8">BOOLEAN</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">completed_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+</TABLE>>]
+	password_reset_tokens [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>password_reset_tokens</B></TD></TR>
+<TR><TD ALIGN="LEFT">token_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">user_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">reset_token<BR/><FONT POINT-SIZE="8">VARCHAR(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">expires_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">created_at<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">used<BR/><FONT POINT-SIZE="8">BOOLEAN</FONT></TD></TR>
+</TABLE>>]
+	event_registrations [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>event_registrations</B></TD></TR>
+<TR><TD ALIGN="LEFT">event_name<BR/><FONT POINT-SIZE="8">VARCHAR(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">user_id<BR/><FONT POINT-SIZE="8">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">registrant_name<BR/><FONT POINT-SIZE="8">VARCHAR(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">registrant_email<BR/><FONT POINT-SIZE="8">VARCHAR(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">registration_date<BR/><FONT POINT-SIZE="8">TIMESTAMP</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">event_date<BR/><FONT POINT-SIZE="8">VARCHAR(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">event_time<BR/><FONT POINT-SIZE="8">VARCHAR(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">status<BR/><FONT POINT-SIZE="8">VARCHAR(50)</FONT></TD></TR>
+</TABLE>>]
+	threads -> users [label="user_id -> user_id" fontname=Arial fontsize=8]
+	conversation_messages -> threads [label="thread_id -> thread_id" fontname=Arial fontsize=8]
+	conversation_messages -> users [label="user_id -> user_id" fontname=Arial fontsize=8]
+	lesson_sessions -> lessons [label="lesson_id -> lesson_id" fontname=Arial fontsize=8]
+	lesson_sessions -> users [label="user_id -> user_id" fontname=Arial fontsize=8]
+	lessons -> units [label="unit_id -> unit_id" fontname=Arial fontsize=8]
+	submissions -> lessons [label="lesson_id -> lesson_id" fontname=Arial fontsize=8]
+	submissions -> units [label="unit_id -> unit_id" fontname=Arial fontsize=8]
+	submissions -> users [label="user_id -> user_id" fontname=Arial fontsize=8]
+	lesson_session_messages -> lesson_sessions [label="session_id -> session_id" fontname=Arial fontsize=8]
+	lesson_sequence -> lessons [label="lesson_id -> lesson_id" fontname=Arial fontsize=8]
+	lesson_sequence -> lessons [label="prerequisite_lesson_id -> lesson_id" fontname=Arial fontsize=8]
+	lesson_sequence -> units [label="unit_id -> unit_id" fontname=Arial fontsize=8]
+	user_progress -> lessons [label="lesson_id -> lesson_id" fontname=Arial fontsize=8]
+	user_progress -> units [label="unit_id -> unit_id" fontname=Arial fontsize=8]
+	user_progress -> users [label="user_id -> user_id" fontname=Arial fontsize=8]
+	password_reset_tokens -> users [label="user_id -> user_id" fontname=Arial fontsize=8]
+	event_registrations -> users [label="user_id -> user_id" fontname=Arial fontsize=8]
+}
