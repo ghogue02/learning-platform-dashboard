@@ -1,14 +1,15 @@
+
 import streamlit as st
 import pandas as pd
 import openai
 import os
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine, text, inspect
+from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 import logging
-from openai import OpenAI, APIError  # Correct import for APIError
-from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output, format_executive_summary_table_data # Import format_executive_summary_table_data
-import graphviz # Import graphviz
+from openai import OpenAI, APIError
+from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output, format_executive_summary_table_data
+
 
 # ENSURE set_page_config IS THE FIRST STREAMLIT COMMAND
 st.set_page_config(
@@ -39,7 +40,7 @@ def main():
     engine = create_engine(DB_URL)
 
     # Sidebar Menu
-    menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis", "Analysis Summary"]
+    menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis", "Analysis Summary", "Curriculum Overview"] # Added "Curriculum Overview"
     choice = st.sidebar.selectbox("Navigation", menu)
 
     if choice == "Metrics Dashboard":
@@ -50,7 +51,50 @@ def main():
         display_content_analysis(engine)
     elif choice == "Analysis Summary":
         display_analysis_summary()
-    
+    elif choice == "Curriculum Overview": # New section
+        display_curriculum_overview(engine)
+
+
+def display_curriculum_overview(engine):
+    st.header("Curriculum Overview")
+    st.subheader("Time Spent Learning per Unit & Lesson")
+    st.write("This section shows the average and total time users have spent learning in each unit and lesson.")
+
+    time_spent_query = text("""
+        SELECT
+            u.title AS unit_title,
+            l.title AS lesson_title,
+            SUM(CASE
+                WHEN EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60 > 120 THEN 120
+                ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
+            END) as total_time_minutes,
+            AVG(CASE
+                WHEN EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60 > 120 THEN 120
+                ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
+            END) as avg_time_minutes,
+            COUNT(DISTINCT ls.session_id) as session_count
+        FROM lesson_sessions ls
+        JOIN lessons l ON ls.lesson_id = l.lesson_id
+        JOIN units u ON l.unit_id = u.unit_id
+        WHERE ls.status = 'completed' -- Consider only completed sessions for time spent
+        GROUP BY u.title, l.title
+        ORDER BY u.title, l.title
+    """)
+
+    try:
+        with engine.connect() as conn:
+            time_spent_df = pd.read_sql_query(time_spent_query, conn)
+
+        if not time_spent_df.empty:
+            time_spent_df['total_time_learning'] = time_spent_df['total_time_minutes'].apply(format_time)
+            time_spent_df['avg_time_learning'] = time_spent_df['avg_time_minutes'].apply(format_time)
+            st.dataframe(time_spent_df[['unit_title', 'lesson_title', 'total_time_learning', 'avg_time_learning', 'session_count']], height=800)
+        else:
+            st.info("No lesson session data available yet to calculate time spent learning.")
+
+    except Exception as e:
+        logger.error(f"Error fetching time spent learning data: {e}")
+        st.error("Error fetching data for Time Spent Learning analysis.")
 
 
 def display_metrics_dashboard(engine):
@@ -495,6 +539,7 @@ def format_time_since_activity(last_activity_time):
         return f"{minutes} minutes ago"
     else:
         return "Just now"
+
 
 if __name__ == "__main__":
     main()
