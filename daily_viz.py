@@ -3,12 +3,12 @@ import pandas as pd
 import openai
 import os
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 from dotenv import load_dotenv
 import logging
 from openai import OpenAI, APIError  # Correct import for APIError
 from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output, format_executive_summary_table_data # Import format_executive_summary_table_data
-
+import graphviz # Import graphviz
 
 # ENSURE set_page_config IS THE FIRST STREAMLIT COMMAND
 st.set_page_config(
@@ -39,7 +39,7 @@ def main():
     engine = create_engine(DB_URL)
 
     # Sidebar Menu
-    menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis", "Analysis Summary"] # Added "Analysis Summary"
+    menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis", "Analysis Summary", "Database Schema"]
     choice = st.sidebar.selectbox("Navigation", menu)
 
     if choice == "Metrics Dashboard":
@@ -48,8 +48,10 @@ def main():
         display_user_leaderboard(engine)
     elif choice == "Content Analysis":
         display_content_analysis(engine)
-    elif choice == "Analysis Summary": # New section
+    elif choice == "Analysis Summary":
         display_analysis_summary()
+    elif choice == "Database Schema":
+        display_database_schema(engine)
 
 
 def display_metrics_dashboard(engine):
@@ -494,6 +496,57 @@ def format_time_since_activity(last_activity_time):
         return f"{minutes} minutes ago"
     else:
         return "Just now"
+
+def display_database_schema(engine):
+    """Displays a visualization of the database schema with visualization options."""
+    st.header("Database Schema Visualization")
+    st.write("Visual representation of table relationships in the database.")
+
+    # --- Visualization Options Sidebar ---
+    st.sidebar.subheader("Visualization Options")
+    layout_engine = st.sidebar.selectbox("Layout Engine",
+                                          ['dot', 'neato', 'fdp', 'sfdp', 'twopi', 'circo'],
+                                          index=0) # Default to 'dot'
+    node_shape = st.sidebar.selectbox("Node Shape",
+                                       ['box', 'ellipse', 'circle', 'plaintext', 'triangle', 'diamond', 'doublecircle'],
+                                       index=0) # Default to 'box'
+    node_style = st.sidebar.selectbox("Node Style",
+                                      ['filled', 'rounded', 'bold', 'dashed', 'dotted', 'solid', 'invis'],
+                                      index=0) # Default to 'filled'
+    edge_style = st.sidebar.selectbox("Edge Style",
+                                      ['dashed', 'dotted', 'bold', 'solid', 'invis'],
+                                      index=3) # Default to 'solid'
+
+
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+
+        dot = graphviz.Digraph('database_schema', comment='Database Schema', engine=layout_engine) # Use selected layout engine
+        dot.attr('node', shape=node_shape, style=node_style) # Use selected node shape and style
+        dot.attr('edge', style=edge_style) # Use selected edge style
+
+
+        for table_name in tables:
+            dot.node(table_name, table_name)
+
+        for table_name in tables:
+            foreign_keys = inspector.get_foreign_keys(table_name)
+            for fk in foreign_keys:
+                referred_table = fk['referred_table']
+                constrained_columns = ", ".join(fk['constrained_columns'])
+                referred_columns = ", ".join(fk['referred_columns'])
+                label = f"{constrained_columns} -> {referred_columns}"
+                dot.edge(table_name, referred_table, label=label)
+
+        diagram_path = "database_schema_diagram.png"
+        dot.render(diagram_path[:-4], format='png', view=False)
+
+        st.image(diagram_path)
+
+    except Exception as e:
+        logger.error(f"Error generating database schema visualization: {e}")
+        st.error("Failed to generate database schema visualization. Check logs for details.")
 
 
 if __name__ == "__main__":
