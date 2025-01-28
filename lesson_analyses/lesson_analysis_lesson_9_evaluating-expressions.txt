@@ -1,26 +1,36 @@
 Analysis for Lesson: 'evaluating-expressions' (Lesson ID: 9)
 
-Based on the analysis of the student messages from the lesson titled "evaluating-expressions," here are the findings:
+### Analysis of Student Messages from "Evaluating Expressions" Lesson
 
-### 1. Concepts or Topics Students are **Struggling** to Understand:
-- **Accessing Nested Values**: Students seem to struggle particularly with understanding how to access deeply nested values within arrays and objects. For example, in a message, a student expressed confusion about accessing properties of an object stored in an array (`console.log(drinks["name"]);`), indicating difficulty in navigating the structure of nested objects.
-- **Understanding Return Values**: Some students had questions about what exactly constitutes a return value and how different expressions evaluate to produce values. While they grasped the concept of expressions in general, nuances in how specific expressions may behave differently (like assignments) caused confusion.
-
-### 2. Concepts or Topics Students Seem to **Understand Well**:
-- **Basic Expressions**: Many students demonstrated a good understanding of what an expression is and how it evaluates to a value (e.g., `15 + 30` evaluates to `45`). They also described how expressions can include numbers, variables, and operations.
-- **Logical Operators**: Students were able to articulate how logical operators work (AND, OR, NOT) and understood the importance of truthy and falsy values in conditions, which suggests they are comfortable with logical expressions.
-- **Method Returns**: There was a clear understanding of how methods like `.length` or `.toUpperCase()` return values based on their functionality.
-
-### 3. Specific Examples or Quotes:
-- **Struggles**:
-  - "I was trying to access the property of name but it wouldn't work, is it because of the data structure setup?" (Confusion about accessing nested values)
-- **Understanding**:
-  - "The return statement ends the execution of a function and specifies a value to be returned to the function caller." (Clear understanding of return statements)
-  - "Yes, `user.address.city` would indeed return `New York`." (Demonstrating understanding of accessing nested object properties)
-
-### 4. Summary of the Main Areas of Struggle and Understanding:
-- **Struggles**: Students are particularly challenged by accessing nested values within arrays and objects and understanding the nuances of return values in different contexts. They often require clarification on how to effectively navigate and manipulate complex data structures.
+#### 1. **Concepts or Topics Students are Struggling to Understand**
+- **Unexpected Return Values**: Students seem to struggle with understanding how assignments can be evaluated and the implications of using single equals `=` in conditions instead of double equals `==` or triple equals `===`. For example, the concept that an assignment can also be an expression that returns a value may be confusing, as illustrated by the statement:
+  - "The expression inside of the `if` statement will evaluate to `"Dr. Pepper"`, which is a truthy value, which will lead to the text being logged."
   
-- **Understanding**: Students show a solid grasp of basic expressions and how they evaluate, logical operators, and the functionality of methods associated with objects. They are able to identify correct usage and expected outcomes but may still seek deeper clarity on more complex expressions or nested data.
+- **Accessing Nested Values**: Students express confusion about accessing properties within nested objects and arrays. For instance, accessing properties like `user.address.city` may lead to uncertainty about how to correctly navigate through data structures.
 
-Overall, while students have a foundational understanding of evaluating expressions, they benefit from additional practice and examples that clarify how to work with nested structures in JavaScript and the behavior of expressions in various contexts.
+#### 2. **Concepts or Topics Students Seem to Understand Well**
+- **Basic Expression Evaluation**: Many students have a good grasp of evaluating simple expressions and can identify parts of an expression that return values. For example, in the messages:
+  - "a function is a reusable block of code that is designed to perform a specific task."
+  - "the return statement ends the execution of a function and specifies a value to be returned to the function caller."
+
+- **Use of Methods**: Students understand how to use common JavaScript methods, such as `toUpperCase()`, which is reflected in their ability to describe its functionality and return value effectively.
+
+#### 3. **Specific Examples or Quotes Illustrating Struggles and Understanding**
+- **Struggles**:
+  - "I was trying to access the property of name but it wouldn't work, is it because of the data structure setup?"
+  - "can we instead talk about return the value when using bracket notation n dot notation n when do use them n what each can or cant do"
+
+- **Understanding**:
+  - "a return statement ends the execution of a function and specifies a value to be returned to the function caller."
+  - "The for loop initializes before the code block executes so in this case let i = 0 will be initialized first then i is checked against the condition to see if it meets the condition."
+
+#### 4. **Summary of Main Areas of Struggle and Understanding**
+- **Struggles**:
+  - Students struggle with unexpected return values from expressions, especially in the context of assignments and conditions.
+  - There is confusion surrounding accessing properties of nested objects and arrays, highlighting a need for more practice and examples in this area.
+
+- **Understanding**:
+  - Students demonstrate a solid understanding of basic expressions, return values, and the use of methods in JavaScript.
+  - Many can articulate how functions work and the role of parameters and return statements within them, indicating a good grasp of foundational concepts.
+
+Overall, while students have a strong grasp of many fundamental concepts, they would benefit from more focused practice on unexpected return values and navigating nested structures in JavaScript.

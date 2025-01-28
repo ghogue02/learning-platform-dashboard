@@ -1,22 +1,28 @@
 Analysis for Lesson: 'functions' (Lesson ID: 10)
 
-Based on the analysis of the student messages from the lesson titled "functions," here are the findings:
+Based on the analysis of the 52 messages from the lesson titled "functions," the following insights can be drawn regarding the concepts students are grappling with and those they seem to grasp well.
 
 ### 1. Concepts or Topics Students are **Struggling** to Understand:
-- **Returning Values**: Some students had questions regarding how to effectively use the `return` statement in functions. For example, Nicole asked, "How should it look in the console?" after discussing the return value, indicating uncertainty on how to see the output of a function that returns a value.
-- **Parameters vs. Arguments**: There was confusion regarding the terminology used in functions. Juan specifically pointed out the difference between parameters and arguments, asking if `name` is a parameter in the function definition and an argument when calling the function.
+- **Returning Values:** Some students have questions about how return values work and how to print these values. For example, a student asked, "How should it look in the console?" after discussing return values.
+- **Parameters vs. Arguments:** There seems to be confusion about the distinction between parameters and arguments, with multiple students asking for clarification. One student pointed out, "isn't name a parameter first and then when you call the function it's considered an argument?" This indicates a lack of clarity on the terminology.
 
 ### 2. Concepts or Topics Students Seem to **Understand Well**:
-- **Basic Function Structure**: Many students demonstrated a clear understanding of how to create and call functions. For example, messages like "yes" in response to whether they understood how to create a function indicate comprehension.
-- **Function Invocation**: Students were able to grasp the concept of invoking functions and saw success in executing simple functions, as evidenced by messages reporting successful outputs like "Hello, World!" or "Hello, Nicole!" in the console.
+- **Basic Function Definition and Creation:** Students generally demonstrate a solid understanding of how to define and call functions. For instance, multiple students responded positively when asked if they understood how to create a function.
+- **Using Console Logging:** Students are comfortable with using `console.log()` to print output, as indicated by their responses when they successfully logged messages to the console.
+- **Function Invocation:** Many students expressed confidence in how to call functions after learning the syntax, stating affirmative responses like "yes" when asked about their understanding.
 
 ### 3. Specific Examples or Quotes:
-- **Struggle with Returning Values**: Nicole asked, "How should it look in the console?" after being introduced to the return statement, suggesting a lack of clarity on how to actually see the returned value.
-- **Confusion on Parameters vs. Arguments**: Juan's question, "isn't name a parameter first and then when you call the function it's considered an argument?" illustrates the misunderstanding about the terminology used in function definitions and calls.
-- **Understanding Function Structure**: Responses like "yes" to questions about whether they understood how to create a function or call one show that students are grasping these concepts well.
+- **Struggle with Returning Values:** A student asked, "How should it look in the console?" after learning about return values, indicating uncertainty about the output.
+- **Clarification on Parameters and Arguments:** A student stated, "isn't name a parameter first and then when you call the function it's considered an argument?" This shows they are trying to grasp the language but find it confusing.
+- **Understanding Function Basics:** Responses such as, "Awesome! You're doing great!" and "yes" when asked if they understood function creation suggest confidence in their grasp of the basics.
 
 ### 4. Summary of Main Areas of Struggle and Understanding:
-- **Struggles**: Students showed difficulty with the distinction between parameters and arguments, as well as the practical application of the `return` statement in functions. This indicates a need for further clarification on these topics.
-- **Understanding**: Students demonstrated a solid understanding of the basic structure and invocation of functions, showing enthusiasm and confidence when executing simple functions successfully.
+- **Struggles:**
+  - Confusion around the concept of returning values from functions, specifically how to capture and display those values.
+  - Lack of clarity regarding the distinction between parameters (the variables in the function definition) and arguments (the values passed during the function call).
 
-Overall, while students are grasping the foundational concepts of functions well, particular attention should be given to reinforcing the concepts of returning values and the distinction between parameters and arguments to enhance their comprehension.
+- **Understanding:**
+  - Students show a strong grasp of how to define, invoke, and utilize basic functions in JavaScript.
+  - They are comfortable using `console.log()` for output and can articulate the function's role in programming effectively.
+
+In conclusion, while students generally understand the foundational concepts of functions and can apply them, some areas, particularly around return values and terminology (parameters vs. arguments), require further clarification and practice.
