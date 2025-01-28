@@ -219,7 +219,7 @@ def display_analysis_summary():
             st.subheader("Part 1: Executive Summary - Top Curriculum Improvement Priorities")
 
             # --- ADD THIS DEBUG STATEMENT ---
-            st.write("Debug: executive_summary_table_data:", executive_summary_table_data)
+            #st.write("Debug: executive_summary_table_data:", executive_summary_table_data)
             # --- END DEBUG STATEMENT ---
 
             if executive_summary_table_data: # Check if executive_summary_table_data is not empty
