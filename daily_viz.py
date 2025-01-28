@@ -40,7 +40,7 @@ def main():
     engine = create_engine(DB_URL)
 
     # Sidebar Menu
-    menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis", "Analysis Summary", "Curriculum Overview"] # Added "Curriculum Overview"
+    menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis", "Analysis Summary", "Curriculum Overview"]
     choice = st.sidebar.selectbox("Navigation", menu)
 
     if choice == "Metrics Dashboard":
@@ -51,7 +51,7 @@ def main():
         display_content_analysis(engine)
     elif choice == "Analysis Summary":
         display_analysis_summary()
-    elif choice == "Curriculum Overview": # New section
+    elif choice == "Curriculum Overview":
         display_curriculum_overview(engine)
 
 
@@ -116,6 +116,9 @@ def display_metrics_dashboard(engine):
        SELECT
             (SELECT COUNT(DISTINCT session_id) FROM lesson_sessions ls WHERE ls.status = 'completed' AND (created_at >= :start_time OR ls.updated_at >= :start_time)) as completed_sessions,
             (SELECT COUNT(DISTINCT session_id) FROM lesson_sessions ls WHERE ls.status = 'in_progress' AND (created_at >= :start_time OR updated_at >= :start_time)) as in_progress_sessions,
+            -- Calculate total time spent learning in minutes for the time range
+            (SELECT COALESCE(SUM(CASE WHEN EXTRACT(EPOCH FROM (ls_time.updated_at - ls_time.created_at)) / 60 > 120 THEN 120 ELSE EXTRACT(EPOCH FROM (ls_time.updated_at - ls_time.created_at)) / 60 END), 0)
+             FROM lesson_sessions ls_time WHERE ls_time.status = 'completed' AND (ls_time.created_at >= :start_time OR ls_time.updated_at >= :start_time)) as total_time_learning_minutes,
             -- Count lesson messages from lesson_session_messages for the time range
             (SELECT COUNT(*) FROM lesson_session_messages lsm INNER JOIN lesson_sessions ls_sub ON lsm.session_id = ls_sub.session_id WHERE (ls_sub.created_at >= :start_time OR ls_sub.updated_at >= :start_time)) as lesson_messages,
             -- Count universal chat messages from conversation_messages for the time range (APPROXIMATION)
@@ -132,17 +135,20 @@ def display_metrics_dashboard(engine):
     if result:
         completed_sessions = result[0] if result else 0
         in_progress_sessions = result[1] if result else 0
-        lesson_messages = result[2] if result else 0
-        universal_chat_messages = result[3] if result else 0
-        new_users = result[4] if result else 0
+        total_time_learning_minutes = result[2] if result else 0
+        lesson_messages = result[3] if result else 0
+        universal_chat_messages = result[4] if result else 0
+        new_users = result[5] if result else 0
         total_user_messages = lesson_messages + universal_chat_messages
+        total_time_learning = format_time(total_time_learning_minutes) # Format total time
 
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5) # Added one more column
         col1.metric("Completed Sessions", completed_sessions)
         col2.metric("In-Progress Sessions", in_progress_sessions)
         col3.metric("Lesson Messages", lesson_messages)
         col4.metric("Universal Chat Messages", universal_chat_messages)
-        st.metric("Total User Messages", total_user_messages)
+        col5.metric("Total Time Learning", total_time_learning) # New metric - Total Time Learning
+        st.metric("Total User Messages", total_user_messages) # Moved Total User Messages below columns
         st.metric("New Users", new_users)
 
     else:
@@ -226,6 +232,28 @@ def display_metrics_dashboard(engine):
     except Exception as e:
         logger.error(f"Error fetching daily messages data: {e}")
         st.error("Error fetching data for Daily Messages chart.")
+
+    # --- New Users by Day Chart ---
+    new_users_daily_query = text("""
+        SELECT DATE(created_at) as signup_date, COUNT(DISTINCT user_id) as new_users_count
+        FROM users
+        WHERE created_at >= :start_time
+        GROUP BY signup_date
+        ORDER BY signup_date
+    """)
+    try:
+        with engine.connect() as conn:
+            new_users_daily_df = pd.read_sql_query(new_users_daily_query, conn, params={"start_time": start_time})
+            if not new_users_daily_df.empty:
+                new_users_daily_df['signup_date'] = pd.to_datetime(new_users_daily_df['signup_date']).dt.strftime('%Y-%m-%d') # Format date
+                new_users_daily_df.set_index('signup_date', inplace=True)
+                st.subheader("New Users by Day")
+                st.line_chart(new_users_daily_df)
+            else:
+                st.info("No new user signup data available for the selected time range to display New Users by Day chart.")
+    except Exception as e:
+        logger.error(f"Error fetching new users daily data: {e}")
+        st.error("Error fetching data for New Users by Day chart.")
 
 
     lesson_breakdown_query = text("""
