@@ -1,0 +1,27 @@
+Analysis for Lesson: 'higher-order-native-array-methods' (Lesson ID: 14)
+
+### Analysis of Student Messages from the Lesson on Higher-Order Native Array Methods
+
+#### 1. Concepts or Topics Students are **Struggling** to Understand
+- **Understanding `.reduce()` Method**: Several messages indicate confusion about how to correctly implement the `.reduce()` method. Students often ask for help in writing the code or clarifying how it works. For example, one student stated, “I need help writing that code,” which suggests they are struggling to apply the method in a practical context.
+- **Application of `.filter()`** and **`.map()`**: While students express general comfort with these methods, there are moments where they seek clarification about specific use cases. For instance, a student asked how to apply the `.filter()` method to their specific array, indicating uncertainty about its application.
+
+#### 2. Concepts or Topics Students Seem to **Understand Well**
+- **Basic Understanding of Array Methods**: Many students demonstrate a solid understanding of the basic usage of methods like `.map()` and `.filter()`. They can explain the functionality, such as, “Each age would be one year older than the original array,” which shows they grasp the concept of transforming data.
+- **Practical Implementation**: Students often engage in coding examples and share their results, like successfully counting occurrences in an array or modifying array values. For example, one student commented, “29,” referring to the correct total age calculated using the `.reduce()` method, indicating they understood how to implement the method successfully.
+
+#### 3. Specific Examples or Quotes
+- **Struggles**:
+  - "How would I use this method for my kids array?" (indicating a need for guidance in applying concepts to their specific context).
+  - "I need help writing that code." (suggests difficulty in coding using the `.reduce()` method).
+  
+- **Understanding**:
+  - "Each age would be one year older than the original array." (demonstrating clear understanding of how the `.map()` method works).
+  - "If I add in a console.log(olderKids); It would print out the new array." (showing confidence in using console logging for debugging and understanding the effects of code).
+
+#### 4. Summary of Main Areas of Struggle and Understanding
+- **Struggles**: Students are particularly challenged by the `.reduce()` method and how to apply it to their own data structures, as well as needing clarity on applying `.filter()` and `.map()` to their specific use cases. This indicates a gap in translating theoretical knowledge into practical coding skills.
+  
+- **Understanding**: Students have a good grasp of the fundamental concepts of higher-order array methods like `.map()` and `.filter()`, as evidenced by their ability to articulate what these methods do and successfully implement them in coding tasks. They are also able to engage in discussions about outcomes and modifications to arrays, showcasing their growing confidence in using JavaScript for array manipulation.
+
+Overall, the analysis reveals that while students are progressing well in understanding the basic principles of higher-order array methods, they require further guidance and practice to solidify their skills, particularly with the more complex `.reduce()` method.

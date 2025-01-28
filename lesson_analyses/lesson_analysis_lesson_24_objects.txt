@@ -1,36 +1,34 @@
 Analysis for Lesson: 'objects' (Lesson ID: 24)
 
-Based on the analysis of the sample messages regarding the lesson on JavaScript objects, we can identify both areas of struggle and understanding among the students.
+Based on the analysis of the 26 messages from the lesson titled "objects," here are the findings regarding student understanding and struggles:
 
-### 1. Concepts or Topics Students are **Struggling** to Understand:
+### 1. **Concepts or Topics Students are Struggling to Understand:**
+- **Accessing Object Properties:** Some students had difficulty articulating how to access properties using dot notation and bracket notation. For example, when asked how to access the `year` property of an object, they often needed prompts or clarification.
+- **Using Object Methods:** There were hints of confusion regarding the methods related to objects like `.hasOwnProperty()`, `.keys()`, `.values()`, and `.entries()`. For instance, students did not show much engagement or questions about these methods, suggesting a lack of understanding or interest.
+- **Distinguishing Between Objects and Arrays:** Some messages indicated that students were unsure about the differences between objects and arrays, which is crucial for understanding how to use them effectively in programming.
 
-- **Understanding Data Types in Object Properties:** One student showed confusion about the appropriate data type for the "age" property, using a string instead of a number. This indicates a struggle with recognizing which data types are suitable for different kinds of information.
-  - **Example Message:** "let student = {name: 'Juan', age: '31', grade: 'b'}”
+### 2. **Concepts or Topics Students Seem to Understand Well:**
+- **Basic Object Structure:** Students demonstrated a solid understanding of how to define an object and its properties. For example, one student successfully created a `student` object with properties like `name`, `age`, and `grade`.
+- **Manipulating Object Properties:** Students were able to modify properties of objects, as seen when they correctly used dot notation to change values, e.g., `car.year = 2025;`.
+- **Accessing Properties:** Many students could accurately access properties of objects using dot notation, indicating they understood the syntax well.
 
-- **Accessing and Modifying Object Properties:** While students demonstrated some understanding of accessing properties, there may still be uncertainty about when to use dot notation versus bracket notation, especially in dynamic situations where property names could change or are stored in variables.
-
-### 2. Concepts or Topics Students Seem to **Understand Well**:
-
-- **Basic Structure of Objects:** Students showed a good grasp of how to create an object and understand its properties. For instance, one student successfully created a "student" object with defined properties.
-  - **Example Message:** "Excellent job, Juan! You've correctly created a 'student' object with properties 'name', 'age', and 'grade.'"
-
-- **Accessing Properties Using Dot Notation:** Students seemed to understand how to access properties through dot notation as evidenced by their successful examples.
-  - **Example Message:** "If you were to print studentGrade, it would display 'b', which is the value of the 'grade' property."
-
-### 3. Specific Examples or Quotes:
-
+### 3. **Specific Examples or Quotes:**
 - **Struggles:**
-  - **Quote:** "let student = {name: 'Juan', age: '31', grade: 'b'}” - This shows a misunderstanding regarding the datatype of the "age" property.
+  - A student replied with "no" when asked if they understood a concept, indicating a lack of confidence or clarity on the topic.
+  - When asked how to access the `year` property, one student needed prompting: "Can you tell me how you would access the updated `year` property of the `car` object?" showing that they were hesitant or unsure.
   
 - **Understanding:**
-  - **Quote:** "Excellent job, Juan! You've correctly created a 'student' object with properties 'name', 'age', and 'grade.'" - This indicates that the student understands how to define an object and its properties.
+  - A student demonstrated their understanding by stating, "let carYear = car.year;" correctly assigning the property to a variable.
+  - Another student confidently modified a property: "car.year = 2025;" showcasing their grasp of object manipulation.
+  - A student explained, "In JavaScript, we could create an object called 'car' and give it properties like make, model, and color," illustrating their understanding of defining objects.
 
-### 4. Summary of Main Areas of Struggle and Understanding:
+### 4. **Summary of Main Areas of Struggle and Understanding:**
+**Struggles:**
+- Difficulty accessing properties and understanding methods associated with objects.
+- Confusion regarding the distinction between objects and arrays.
 
-- **Struggles:** 
-  - Students are struggling with the application of appropriate data types in object properties and the nuances of accessing properties using different methods (dot vs. bracket notation).
+**Understanding:**
+- Strong grasp of defining objects and modifying their properties.
+- Ability to access properties correctly using dot notation.
 
-- **Understanding:** 
-  - Students display a solid understanding of the basic structure of objects in JavaScript and how to create and access properties using dot notation. They can successfully define objects and retrieve property values.
-
-Overall, while students are grasping the fundamental concepts of JavaScript objects, they require further support in applying these concepts correctly, particularly regarding data types and property access methods. The teaching approach should focus on reinforcing these areas with additional examples and practice opportunities.
+Overall, while students showed a good foundational understanding of objects, there are key areas, particularly in accessing and using methods, where further reinforcement may be needed to ensure full comprehension of the topic.

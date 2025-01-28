@@ -1,30 +1,38 @@
 Analysis for Lesson: 'data-representation-with-code' (Lesson ID: 7)
 
-Based on the analysis of the 184 messages from the lesson titled "data-representation-with-code," here are the key findings regarding students' struggles and understanding:
+### Analysis of Student Messages
 
-### 1. Concepts or Topics Students Are Struggling With:
-- **Understanding Object Properties**: Some students had difficulty clearly articulating how to represent object properties in code. For instance, one student confused the terminology around accessing properties, indicating a need for clarification on object structure and syntax.
-- **Polymorphism**: While students grasped the basic concept, some struggled with explaining it in their own words. Although they understood that methods can behave differently based on the object they are acting on, they occasionally mixed up the implementation details and contexts.
-- **Syntax and Language-Specific Details**: Students often needed clarification on how to access properties in different programming languages, such as using square brackets in Python versus dot notation in JavaScript.
+#### 1. Concepts or Topics Students are **Struggling** to Understand:
+Based on the analyzed messages, students appear to struggle primarily with:
+- **Polymorphism**: Although students like Shaniqua and Kenny demonstrate an understanding of polymorphism, they often need clarification on how it applies to different classes and methods. They sometimes mix up terminology or concepts when attempting to explain it back.
+- **Encapsulation**: Students occasionally confuse how encapsulation restricts direct access to object properties, needing analogies to clarify the concept. 
 
-**Examples of Struggles**:
-- "I am unclear how to relay it back in my own words." (Struggling to articulate understanding)
-- "Are there any other important uses for polymorphism?" (Seeking deeper understanding)
-- "What index would we use?" (Confusion about list indexing)
+**Example Messages**:
+- "i understand what i am reading i am unclear how to relay it back in my own words."
+- "it allows methods to do different things depending on the object they are acting on."
 
-### 2. Concepts or Topics Students Seem to Understand Well:
-- **Basic Object Structure**: Most students demonstrated a good understanding of how to create and manipulate simple objects. They could define a car object and describe its properties and methods.
-- **Data Representation**: Students were generally comfortable with the idea of representing real-world objects through code, using key-value pairs in objects or dictionaries.
-- **Encapsulation and Inheritance**: Many students grasped the concepts of encapsulation (hiding data) and inheritance (creating subclasses) and could provide accurate definitions and examples.
+#### 2. Concepts or Topics Students Seem to **Understand Well**:
+Students show a good grasp of the following concepts:
+- **Basic Object Representation**: Many students can create a simple object with properties without difficulty.
+- **Data Structures**: Students demonstrate understanding when asked to represent collections of objects, like lists or arrays.
+- **Inheritance**: The concept of inheritance is well understood, with students explaining it correctly as subclasses inheriting properties and methods from parent classes.
 
-**Examples of Understanding**:
-- "An object is a collection of key value pairs used to represent complex data in a structured way." (Demonstrating understanding of object structure)
-- "Polymorphism allows methods to do different things depending on the object they are acting on." (Accurately describing polymorphism)
-- "A class is like a blueprint for an object determining the object's attributes and methods." (Clear understanding of classes)
+**Example Messages**:
+- "a class is like a blueprint for an object determining the object's attributes and methods."
+- "inheritance allows you to create a child class which will inherit all the properties from the parent class/superclass."
 
-### 3. Summary of Main Areas of Struggle and Understanding:
-- **Struggles**: The primary areas of struggle for students included articulating the concepts of polymorphism and encapsulation in their own words, as well as understanding the specific syntax related to different programming languages. Some confusion around indexing in lists and accessing object properties also surfaced.
+#### 3. Examples or Quotes from Messages:
+- **Struggles**:
+  - "are there any other important uses for polymorphism?"
+  - "mySportsCar.park(); I am ready to move forward."
   
-- **Understanding**: Students showed a strong grasp of the basic concepts of objects, data representation, encapsulation, and inheritance. They could create objects and use methods effectively, demonstrating a good foundational knowledge of object-oriented programming principles.
+- **Understanding**:
+  - "an object is a collection of key value pairs they are used to represent complex data in a structured way."
+  - "let myNewCar = new Car('Blue', 'Jeep', 'Grand Wagoneer', 0);"
 
-Overall, the lesson seems to resonate well with students, although they may benefit from further exercises and examples to cement their understanding of more complex topics like polymorphism and encapsulation, as well as language-specific syntaxes.
+#### 4. Summary of Main Areas of Struggle and Understanding:
+- **Struggles**: Students primarily struggle with abstract concepts like polymorphism and encapsulation, often needing additional explanations, analogies, or examples to solidify their understanding. They also encounter difficulties when trying to articulate their understanding in their own words.
+  
+- **Understanding**: Students demonstrate a strong grasp of basic object representation, data structures, and inheritance. They can create and manipulate basic objects and understand how properties and methods work together in classes. 
+
+Overall, while students are progressing well, reinforcing the more abstract concepts through practical examples and analogies could enhance their understanding and retention.

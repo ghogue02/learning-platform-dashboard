@@ -17,7 +17,7 @@ openai.api_key = OPENAI_API_KEY
 
 def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini"):
     """
-    Reads lesson analysis files, summarizes them using GPT, and provides prioritized recommendations.
+    Reads lesson analysis files, summarizes them using GPT, and provides prioritized recommendations with weight/severity.
     Returns a tuple: (summary_markdown, lesson_insights_table_data, executive_summary_table_data, lesson_analyses_data).
     Returns None, None, None, None in case of error or no data.
     """
@@ -46,6 +46,8 @@ def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini
 
     prompt = f"""
     You are an expert learning and curriculum designer, providing **highly concise and actionable** insights to improve a coding education platform. Analyze the following lesson concept analyses.
+    For each Key Challenge and Lesson-Specific Opportunity Insight, estimate a **Severity Level** as **High, Medium, or Low** based on the frequency or impact of the issue observed in the student messages.
+
     Identify:
     1.  **Top 3 Key Challenges**: Identify the top 3 most significant, recurring challenges or areas of difficulty students are facing across all lessons, based on the combined lesson analyses. Focus on actionable curriculum improvements to address these.
     2.  **Lesson-Specific Opportunity Insights for Coaches**: For each lesson, extract 2-3 key insights that coaches can use to better support students in those specific lessons. These should be very specific and actionable for coaches.
@@ -57,31 +59,24 @@ def summarize_lesson_analyses(analysis_dir="lesson_analyses", model="gpt-4o-mini
     ### [Key Challenge 1]
     - **Description:** [Concise description of the challenge]
     - **Example:** [Brief example illustrating the challenge]
-    - **Severity Level:** [High/Medium/Low]
+    - **Severity Level:** [**High** / **Medium** / **Low**]
     - **Actionable Recommendation:** [Specific, actionable recommendation to address this challenge in the curriculum]
 
     ### [Key Challenge 2]
-    - **Description:** [Concise description of the challenge]
-    - **Example:** [Brief example illustrating the challenge]
-    - **Severity Level:** [High/Medium/Low]
-    - **Actionable Recommendation:** [Specific, actionable recommendation to address this challenge in the curriculum]
+    ... (same format as above)
 
     ### [Key Challenge 3]
-    - **Description:** [Concise description of the challenge]
-    - **Example:** [Brief example illustrating the challenge]
-    - **Severity Level:** [High/Medium/Low]
-    - **Actionable Recommendation:** [Specific, actionable recommendation to address this challenge in the curriculum]
+    ... (same format as above)
 
 
     Part 2: PRIORITIZED Lesson-Specific Opportunity Insights for Coaches
 
     **Lesson Title:** [Lesson Title 1]
     - **Opportunity Insights:** [Bulleted list of 2-3 actionable insights for coaches for this lesson]
+    - **Severity Level:** [**High** / **Medium** / **Low**]  <-- ADDED Severity Level here for Lesson Insights
 
     **Lesson Title:** [Lesson Title 2]
-    - **Opportunity Insights:** [Bulleted list of 2-3 actionable insights for coaches for this lesson]
-
-    ... (and so on for each lesson)
+    ... (same format as above for each lesson)
 
 
     Combined Lesson Analyses:
@@ -117,7 +112,7 @@ def format_executive_summary_table_data(overall_summary):
     challenge = None
     description = None
     example = None
-    severity_level = None
+    severity_level = None # Capture severity level
     recommendation = None
 
     for line in summary_lines:
@@ -128,23 +123,23 @@ def format_executive_summary_table_data(overall_summary):
             description = line[len("- **Description:**"):].strip()
         elif line.startswith("- **Example:**"):
             example = line[len("- **Example:**"):].strip()
-        elif line.startswith("- **Severity Level:**"):
+        elif line.startswith("- **Severity Level:**"): # Extract Severity Level
             severity_level = line[len("- **Severity Level:**"):].strip()
         elif line.startswith("- **Actionable Recommendation:**"):
             recommendation = line[len("- **Actionable Recommendation:**"):].strip()
-            if challenge and description and severity_level and recommendation:
+            if challenge and description and severity_level and recommendation: # Include severity_level check
                 # --- Explicitly define dictionary keys as strings ---
                 summary_table_data.append({
                     'Challenge': challenge,
                     'Description': description,
                     'Example': example,
-                    'Severity Level': severity_level,
+                    'Severity Level': severity_level, # Add Severity Level to table data
                     'Actionable Recommendation': recommendation
                 })
                 challenge = None
                 description = None
                 example = None
-                severity_level = None
+                severity_level = None # Reset severity_level
                 recommendation = None
 
 
@@ -157,7 +152,7 @@ def format_executive_summary_table_data(overall_summary):
             output_text_part1 += f"### {row['Challenge']}\n"
             output_text_part1 += f"- **Description:** {row['Description']}\n"
             output_text_part1 += f"- **Example:** {row['Example']}\n"
-            output_text_part1 += f"- **Severity Level:** {row['Severity Level']}\n"
+            output_text_part1 += f"- **Severity Level:** {row['Severity Level']}\n" # Include Severity Level in Markdown output
             output_text_part1 += f"- **Actionable Recommendation:** {row['Actionable Recommendation']}\n\n"
     else:
         output_text_part1 += "No Executive Summary data available.\n" # Handle no data case
@@ -178,16 +173,20 @@ def format_lesson_insights_for_output(lesson_analyses_data, overall_summary): # 
             lesson_title = lesson_analysis['title']
             analysis_lines = lesson_analysis['analysis'].split('\n')
             insights = []
+            insight_severity = None # Initialize insight_severity
             collect_insights = False
 
             for line in analysis_lines:
+                line = line.strip()
                 if "Concepts or Topics Students are **Struggling** to Understand:" in line:
                     collect_insights = True
                     continue
                 elif "Concepts or Topics Students Seem to **Understand Well**:" in line:
                     collect_insights = False
                     break # Stop collecting after struggles, before good understanding for conciseness
-                elif collect_insights and line.strip() and not line.startswith("Examples:"): # Capture insights, not examples
+                elif collect_insights and line.startswith("- **Severity Level:**"): # Check for Severity Level line
+                    insight_severity = line[len("- **Severity Level:**"):].strip() # Extract Severity Level
+                elif collect_insights and line.strip() and not line.startswith("Examples:") and not line.startswith("- **Severity Level:**"): # Capture insights, not examples or Severity Level
                     insight = line.strip().replace('- ', '').replace('* ', '') # Clean up insight formatting
                     if insight: # Only add non-empty insights
                         insights.append(insight)
@@ -195,12 +194,15 @@ def format_lesson_insights_for_output(lesson_analyses_data, overall_summary): # 
             if insights:
                 lesson_insights_table_data.append({
                     "Lesson Title": lesson_title,
-                    "Opportunity Insights": "\n".join([f"- {insight}" for insight in insights[:3]]) # Take only first 3 insights and format as bullet points
+                    "Opportunity Insights": "\n".join([f"- {insight}" for insight in insights[:3]]) , # Take only first 3 insights and format as bullet points
+                    "Severity Level": insight_severity # Add Severity Level for Lesson Insight
                 })
                 output_text += f"**Lesson Title:** {lesson_title}\n"
                 output_text += "- **Opportunity Insights:**\n"
                 for insight in insights[:3]: # Output only the first 3 insights in markdown
                     output_text += f"  - {insight}\n"
+                if insight_severity: # Output Severity Level in markdown if available
+                    output_text += f"- **Severity Level:** {insight_severity}\n"
                 output_text += "\n"
     else:
         output_text += "No lesson-specific insights available.\n" # Handle no data case

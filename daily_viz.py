@@ -132,6 +132,57 @@ def display_metrics_dashboard(engine):
         logger.error(f"Error fetching overall metrics: {e}")
         st.error(f"Error fetching overall metrics data. Please check logs for details.")
 
+    # --- Daily Active Users Chart ---
+    daily_users_query = text("""
+        SELECT DATE(ls.updated_at) as activity_date, COUNT(DISTINCT ls.user_id) as daily_active_users
+        FROM lesson_sessions ls
+        WHERE ls.updated_at >= :start_time
+        GROUP BY activity_date
+        ORDER BY activity_date
+    """)
+    try:
+        with engine.connect() as conn:
+            daily_users_df = pd.read_sql_query(daily_users_query, conn, params={"start_time": start_time})
+            if not daily_users_df.empty:
+                daily_users_df['activity_date'] = pd.to_datetime(daily_users_df['activity_date']).dt.strftime('%Y-%m-%d') # Format date
+                daily_users_df.set_index('activity_date', inplace=True)
+                st.subheader("Daily Active Users")
+                st.line_chart(daily_users_df)
+            else:
+                st.info("No user activity data available for the selected time range to display Daily Active Users chart.")
+    except Exception as e:
+        logger.error(f"Error fetching daily active users data: {e}")
+        st.error("Error fetching data for Daily Active Users chart.")
+
+
+    # --- Daily Messages Chart (Bar Chart) ---
+    daily_messages_query = text("""
+        SELECT DATE(msg_time) as message_date, COUNT(*) as daily_messages
+        FROM (
+            SELECT lsm.created_at as msg_time FROM lesson_session_messages lsm
+            UNION ALL
+            SELECT cm.created_at as msg_time FROM conversation_messages cm WHERE cm.message_role = 'user'
+        ) as all_messages
+        WHERE msg_time >= :start_time
+        GROUP BY message_date
+        ORDER BY message_date
+    """)
+    try:
+        with engine.connect() as conn:
+            daily_messages_df = pd.read_sql_query(daily_messages_query, conn, params={"start_time": start_time})
+            if not daily_messages_df.empty:
+                daily_messages_df['message_date'] = pd.to_datetime(daily_messages_df['message_date']).dt.strftime('%Y-%m-%d') # Format date
+                daily_messages_df.set_index('message_date', inplace=True)
+                st.subheader("Daily Total Messages (User)")
+                st.bar_chart(daily_messages_df) # Changed to bar_chart
+            else:
+                st.info("No message data available for the selected time range to display Daily Messages chart.")
+
+    except Exception as e:
+        logger.error(f"Error fetching daily messages data: {e}")
+        st.error("Error fetching data for Daily Messages chart.")
+
+
     lesson_breakdown_query = text("""
     SELECT
       l.title,
@@ -243,32 +294,13 @@ def display_executive_summary_table(summary_table_data):
     # Limit to the first 5 rows if there are more
     summary_df = summary_df.head(5)
 
-    st.dataframe(summary_df.set_index('Challenge'), # Set 'Challenge' as index
-                 column_config={
-                     # "Challenge" column config REMOVED - now index
-                     "Description": st.column_config.Column(width="large", label="Description"),
-                     "Example": st.column_config.Column(width="medium"),
-                     "Severity Level": st.column_config.Column(width="small"),
-                     "Actionable Recommendation": st.column_config.Column(width="large", label="Recommendation")
-                 },
-                 hide_index=False, # Keep index visible (Challenge names)
-                 height=350,
-                 use_container_width=True # ADDED use_container_width to st.dataframe
-    )
+    st.table(summary_df.set_index('Challenge')[['Description', 'Example', 'Severity Level', 'Actionable Recommendation']].rename(columns={'Severity Level': 'Weight'})) # Use st.table, set index, select and rename columns
 
 
 def display_lesson_insights_table(lesson_insights_table_data):
-    """Displays lesson-specific opportunity insights in a Streamlit DataFrame table."""
+    """Displays lesson-specific opportunity insights in a Streamlit Table."""
     insights_df = pd.DataFrame(lesson_insights_table_data)
-    st.dataframe(insights_df,
-                 column_config={
-                     "Lesson Title": st.column_config.Column(width="medium"),
-                     "Opportunity Insights": st.column_config.Column(width="large")
-                 },
-                 hide_index=True,
-                 height=300,
-                 use_container_width=True # ADDED use_container_width to st.dataframe
-    )
+    st.table(insights_df.set_index('Lesson Title')[['Opportunity Insights', 'Severity Level']].rename(columns={'Severity Level': 'Weight'})) # Use st.table, set index, select and rename columns
 
 
 def display_user_leaderboard(engine):
