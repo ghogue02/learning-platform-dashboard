@@ -233,27 +233,28 @@ def display_metrics_dashboard(engine):
         logger.error(f"Error fetching daily messages data: {e}")
         st.error("Error fetching data for Daily Messages chart.")
 
-    # --- New Users by Day Chart ---
-    new_users_daily_query = text("""
+    # --- Cumulative New Users Chart ---
+    cumulative_new_users_query = text("""
         SELECT DATE(created_at) as signup_date, COUNT(DISTINCT user_id) as new_users_count
         FROM users
-        WHERE created_at >= :start_time
+        WHERE created_at <= NOW() -- Consider all signups up to now
         GROUP BY signup_date
         ORDER BY signup_date
     """)
     try:
         with engine.connect() as conn:
-            new_users_daily_df = pd.read_sql_query(new_users_daily_query, conn, params={"start_time": start_time})
-            if not new_users_daily_df.empty:
-                new_users_daily_df['signup_date'] = pd.to_datetime(new_users_daily_df['signup_date']).dt.strftime('%Y-%m-%d') # Format date
-                new_users_daily_df.set_index('signup_date', inplace=True)
-                st.subheader("New Users by Day")
-                st.line_chart(new_users_daily_df)
+            cumulative_new_users_df = pd.read_sql_query(cumulative_new_users_query, conn)
+            if not cumulative_new_users_df.empty:
+                cumulative_new_users_df['signup_date'] = pd.to_datetime(cumulative_new_users_df['signup_date']).dt.strftime('%Y-%m-%d') # Format date
+                cumulative_new_users_df.set_index('signup_date', inplace=True)
+                cumulative_new_users_df['cumulative_users'] = cumulative_new_users_df['new_users_count'].cumsum() # Calculate cumulative sum
+                st.subheader("Cumulative New Users Over Time")
+                st.line_chart(cumulative_new_users_df[['cumulative_users']]) # Chart cumulative users
             else:
-                st.info("No new user signup data available for the selected time range to display New Users by Day chart.")
+                st.info("No new user signup data available to display Cumulative New Users chart.")
     except Exception as e:
-        logger.error(f"Error fetching new users daily data: {e}")
-        st.error("Error fetching data for New Users by Day chart.")
+        logger.error(f"Error fetching cumulative new users data: {e}")
+        st.error("Error fetching data for Cumulative New Users chart.")
 
 
     lesson_breakdown_query = text("""
