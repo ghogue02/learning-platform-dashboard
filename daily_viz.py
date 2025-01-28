@@ -243,19 +243,18 @@ def display_executive_summary_table(summary_table_data):
     # Limit to the first 5 rows if there are more
     summary_df = summary_df.head(5)
 
-    st.dataframe(summary_df.set_index('Challenge'),
+    st.dataframe(summary_df.set_index('Challenge'), # Set 'Challenge' as index
                  column_config={
-                     # "Challenge" column is now the index, so no need to configure as a column
-                     "Description": st.column_config.Column(width="large", label="Description"), # Renamed header, word wrap - max_width and use_container_width removed
-                     "Example": st.column_config.Column(width="medium"), # Word wrap - max_width and use_container_width removed
-                     "Severity Level": st.column_config.Column(width="small"), # Word wrap - max_width and use_container_width removed
-                     "Actionable Recommendation": st.column_config.Column(width="large", label="Recommendation") # Word wrap - max_width and use_container_width removed
+                     # "Challenge" column config REMOVED - now index
+                     "Description": st.column_config.Column(width="large", label="Description"),
+                     "Example": st.column_config.Column(width="medium"),
+                     "Severity Level": st.column_config.Column(width="small"),
+                     "Actionable Recommendation": st.column_config.Column(width="large", label="Recommendation")
                  },
                  hide_index=False, # Keep index visible (Challenge names)
-                 height=350
-                 # use_container_width=True # removed use_container_width
+                 height=350,
+                 use_container_width=True # ADDED use_container_width to st.dataframe
     )
-
 
 
 def display_lesson_insights_table(lesson_insights_table_data):
@@ -263,12 +262,12 @@ def display_lesson_insights_table(lesson_insights_table_data):
     insights_df = pd.DataFrame(lesson_insights_table_data)
     st.dataframe(insights_df,
                  column_config={
-                     "Lesson Title": st.column_config.Column(width="medium"), # Word wrap - max_width and use_container_width removed
-                     "Opportunity Insights": st.column_config.Column(width="large") # Word wrap - max_width and use_container_width removed
+                     "Lesson Title": st.column_config.Column(width="medium"),
+                     "Opportunity Insights": st.column_config.Column(width="large")
                  },
                  hide_index=True,
-                 height=300
-                 # use_container_width=True # removed use_container_width
+                 height=300,
+                 use_container_width=True # ADDED use_container_width to st.dataframe
     )
 
 
