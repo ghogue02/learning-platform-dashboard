@@ -9,9 +9,8 @@ import logging
 from openai import OpenAI, APIError
 from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output, format_executive_summary_table_data
 import json
-from airtable import Airtable  # Import Airtable library
+from airtable import Airtable
 
-# ENSURE set_page_config IS THE FIRST STREAMLIT COMMAND
 st.set_page_config(
     page_title="Learning Platform Analytics Dashboard",
     page_icon="📊",
@@ -27,9 +26,10 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
 
 # --- Airtable Configuration ---
-AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")  # Set Airtable API Key in Streamlit Secrets
-AIRTABLE_BASE_KEY = os.getenv("AIRTABLE_BASE_KEY")  # Set Airtable Base Key in Streamlit Secrets
-AIRTABLE_TABLE_NAME = "Fellows"  # Replace with your Airtable table name
+AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
+AIRTABLE_BASE_KEY = os.getenv("AIRTABLE_BASE_KEY")
+AIRTABLE_TABLE_NAME = "Fellows"
+
 airtable = Airtable(AIRTABLE_BASE_KEY, AIRTABLE_TABLE_NAME, api_key=AIRTABLE_API_KEY)
 
 
@@ -38,8 +38,38 @@ def main():
     st.write(f"Streamlit version: **{st.__version__}**")
     engine = create_engine(DB_URL)
 
-    # --- Set Streamlit Theme ---
-    st.set_theme(theme="dark")  # Apply dark theme
+    # --- Apply Basic Dark Theme using CSS ---
+    st.markdown(
+        """
+        <style>
+            body {
+                color: white;
+                background-color: #1E1E1E; /* Dark background color */
+            }
+            .stDataFrame th, .stDataFrame td {
+                color: white !important; /* Ensure table text is white */
+                border-color: #333 !important; /* Darker border color for table */
+            }
+            .stApp {
+                background-color: #1E1E1E;
+            }
+            .css-1egvi7u { /* Streamlit elements background (e.g., sidebar) */
+                background-color: #282828;
+            }
+            .css-ke7b8c { /* Streamlit widget text color */
+                color: white;
+            }
+            .css-1adrpw7 { /* Metric value color */
+                color: white !important;
+            }
+            .css-1bb5s3u { /* Metric label color */
+                color: #ddd; /* Slightly lighter text for labels */
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    # --- End Dark Theme CSS ---
 
     menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis", "Analysis Summary", "Curriculum Overview", "Mock Interviews"]
     choice = st.sidebar.selectbox("Navigation", menu)
@@ -85,6 +115,12 @@ def display_mock_interviews(engine):
     col2.metric("Average Feedback Score", avg_feedback)
 
     st.subheader("Recent Interview Sessions")
+    recent_interviews_df = fetch_recent_interview_data(engine) # Moved table display to separate function
+    display_recent_interviews_table(recent_interviews_df)
+
+
+@st.cache_data(ttl=120) # Cache recent interviews data for 2 minutes
+def fetch_recent_interview_data(engine):
     recent_interviews_query = text("""
         SELECT
             isess.int_session_id,
@@ -100,37 +136,41 @@ def display_mock_interviews(engine):
     try:
         with engine.connect() as conn:
             recent_interviews_df = pd.read_sql_query(recent_interviews_query, conn)
-            if not recent_interviews_df.empty:
-                recent_interviews_df.rename(columns={
-                    'int_session_id': 'Session ID',
-                    'first_name': 'First Name',
-                    'last_name': 'Last Name',
-                    'overall_feedback': 'Feedback JSON',
-                    'created_at': 'Interview Date'
-                }, inplace=True)
-
-                def extract_interview_score(feedback_json_dict):
-                    logger.info(f"Type of feedback_json_str before parsing: {type(feedback_json_dict)}")
-                    try:
-                        return feedback_json_dict.get('interviewScore')
-                    except (AttributeError, TypeError) as e:
-                        logger.error(f"Error extracting interviewScore from dict: {e}. Data: {feedback_json_dict}")
-                        return None
-
-                recent_interviews_df['Interview Score'] = recent_interviews_df['Feedback JSON'].apply(extract_interview_score)
-
-                def extract_interview_feedback_text(feedback_json_dict):
-                    return feedback_json_dict.get('interviewFeedback')
-
-                recent_interviews_df['Formatted Feedback'] = recent_interviews_df['Feedback JSON'].apply(extract_interview_feedback_text)
-
-                st.dataframe(recent_interviews_df[['Session ID', 'First Name', 'Last Name', 'Interview Score', 'Formatted Feedback', 'Interview Date']], height=500)
-            else:
-                st.info("No mock interview session data available yet for recent sessions.")
-
+            return recent_interviews_df
     except Exception as e:
         logger.error(f"Error fetching recent mock interview sessions: {e}")
         st.error("Error fetching recent mock interview session data.")
+        return pd.DataFrame()
+
+
+def display_recent_interviews_table(recent_interviews_df):
+    if not recent_interviews_df.empty:
+        recent_interviews_df.rename(columns={
+            'int_session_id': 'Session ID',
+            'first_name': 'First Name',
+            'last_name': 'Last Name',
+            'overall_feedback': 'Feedback JSON',
+            'created_at': 'Interview Date'
+        }, inplace=True)
+
+        def extract_interview_score(feedback_json_dict):
+            logger.info(f"Type of feedback_json_str before parsing: {type(feedback_json_dict)}")
+            try:
+                return feedback_json_dict.get('interviewScore')
+            except (AttributeError, TypeError) as e:
+                logger.error(f"Error extracting interviewScore from dict: {e}. Data: {feedback_json_dict}")
+                return None
+
+        recent_interviews_df['Interview Score'] = recent_interviews_df['Feedback JSON'].apply(extract_interview_score)
+
+        def extract_interview_feedback_text(feedback_json_dict):
+            return feedback_json_dict.get('interviewFeedback')
+
+        recent_interviews_df['Formatted Feedback'] = recent_interviews_df['Feedback JSON'].apply(extract_interview_feedback_text)
+
+        st.dataframe(recent_interviews_df[['Session ID', 'First Name', 'Last Name', 'Interview Score', 'Formatted Feedback', 'Interview Date']], height=500)
+    else:
+        st.info("No mock interview session data available yet for recent sessions.")
 
 
 def display_curriculum_overview(engine):
@@ -179,7 +219,6 @@ def display_metrics_dashboard(engine):
     st.header("Learning Platform Metrics")
     st.write("Note: 'User Messages' counts are separated into 'Lesson Messages' and 'Universal Chat Messages'. 'Universal Chat Messages' count is approximated and may not be perfectly accurate without a clear distinction in the database.")
 
-    # Time Range Selector
     time_ranges = {
         "Last 24 Hours": 1,
         "Last 7 Days": 7,
@@ -322,8 +361,8 @@ def display_user_leaderboard(engine):
             df_leaderboard = pd.read_sql_query(leaderboard_query, conn, params={"start_time": start_time})
 
         # --- Fetch Profile Pictures from Airtable ---
-        airtable_data = fetch_airtable_fellow_data()  # Fetch Airtable data
-        df_leaderboard = merge_airtable_pictures(df_leaderboard, airtable_data) # Merge pictures
+        airtable_data = fetch_airtable_fellow_data()
+        df_leaderboard = merge_airtable_pictures(df_leaderboard, airtable_data)
 
         df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time)
         df_leaderboard['time_since_last_activity'] = df_leaderboard['last_activity_time'].apply(format_time_since_activity)
@@ -332,12 +371,12 @@ def display_user_leaderboard(engine):
         styled_leaderboard = df_leaderboard.style.apply(style_top_3_and_stripes, axis=None)
 
         st.dataframe(
-            styled_leaderboard, # Use styled dataframe
-            column_config={ # Column configurations for better display
-                "profile_picture": st.column_config.ImageColumn("Profile"), # Image column for profile picture
-                "first_name": "First Name", # Rename columns for display
+            styled_leaderboard,
+            column_config={
+                "profile_picture": st.column_config.ImageColumn("Portrait"),
+                "first_name": "First Name",
                 "last_name": "Last Name",
-                "lessons_completed": "Lessons 🎓", # Add icons to headers
+                "lessons_completed": "Lessons 🎓",
                 "time_spent_learning": "Time Learning ⏱️",
                 "lesson_messages": "Lesson Messages 💬",
                 "universal_chat_messages": "Chat Messages",
@@ -358,7 +397,7 @@ def analyze_lesson_content(engine, lesson_id, lesson_title, sample_size=500, ret
     if not messages_df.empty:
         current_sample_size = min(sample_size, len(messages_df)) # Use current_sample_size
         st.info(f"Analyzing a sample of the {current_sample_size} most recent messages from Lesson: '{lesson_title}' (including AI responses: {analyze_ai_responses})")
-        sample_df = messages_df.head(current_sample_size)
+        sample_df = messages_df.head(sample_size)
 
         with st.spinner(f"Analyzing lesson conversations for '{lesson_title}' ..."):
             try:
@@ -491,16 +530,16 @@ def format_time_since_activity(last_activity_time):
 def fetch_airtable_fellow_data():
     """Fetches Fellow data including profile pictures from Airtable."""
     try:
-        all_records = airtable.get_all(view='Grid view') # Replace 'Grid view' with your actual view name if needed
+        all_records = airtable.get_all(view='Grid view')
         fellow_data = []
         for record in all_records:
             fields = record['fields']
             picture_url = None
-            if 'Profile Picture' in fields and fields['Profile Picture']: # Check if 'Profile Picture' field exists and is not empty
-                picture_url = fields['Profile Picture'][0]['url'] if fields['Profile Picture'][0]['url'] else None # Get URL, handle potential empty URL
+            if 'Portrait' in fields and fields['Portrait']: # Corrected field name to "Portrait"
+                picture_url = fields['Portrait'][0]['url'] if fields['Portrait'][0]['url'] else None # Corrected field name to "Portrait"
             fellow_data.append({
                 'first_name': fields.get('First Name'), # Use .get() for safety
-                'last_name': fields.get('Last Name'),
+                'last_name': fields.get('LastName'), # Corrected field name to "LastName"
                 'profile_picture_url': picture_url
             })
         return fellow_data
@@ -513,29 +552,29 @@ def merge_airtable_pictures(leaderboard_df, airtable_fellow_data):
     profile_pictures = {}
     for fellow in airtable_fellow_data:
         name_key = (fellow['first_name'], fellow['last_name'])
-        if name_key: # Ensure name key is valid
+        if name_key:
             profile_pictures[name_key] = fellow['profile_picture_url']
 
     profile_pictures_list = []
     for index, row in leaderboard_df.iterrows():
         name_key = (row['first_name'], row['last_name'])
-        profile_pictures_list.append(profile_pictures.get(name_key)) # Get picture URL, default to None if no match
+        profile_pictures_list.append(profile_pictures.get(name_key))
 
-    leaderboard_df['profile_picture'] = profile_pictures_list # Add profile picture column
+    leaderboard_df['profile_picture'] = profile_pictures_list
     return leaderboard_df
 
 
 # --- Styling Function ---
 def style_top_3_and_stripes(df):
     """Styles the top 3 rows with gold, silver, bronze and adds row stripes."""
-    is_top_3 = df.index < 3 # Assuming DataFrame is already sorted by rank
+    is_top_3 = df.index < 3
     is_even_row = df.index % 2 == 0
 
     styles = pd.DataFrame('', index=df.index, columns=df.columns)
-    styles.loc[is_top_3[0], :] = 'background-color: gold; color: black' # Gold for rank 1 (index 0)
-    styles.loc[is_top_3[1], :] = 'background-color: silver; color: black' # Silver for rank 2 (index 1)
-    styles.loc[is_top_3[2], :] = 'background-color: #CD7F32; color: white' # Bronze for rank 3 (index 2)
-    styles.loc[is_even_row, :] = 'background-color: #262730;' # Row striping (darker background for even rows in dark theme)
+    styles.loc[is_top_3[0], :] = 'background-color: gold; color: black'
+    styles.loc[is_top_3[1], :] = 'background-color: silver; color: black'
+    styles.loc[is_top_3[2], :] = 'background-color: #CD7F32; color: white'
+    styles.loc[is_even_row, :] = 'background-color: #262730;'
     return styles
 
 
