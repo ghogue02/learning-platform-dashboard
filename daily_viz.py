@@ -27,7 +27,7 @@ openai.api_key = OPENAI_API_KEY
 # --- Airtable Configuration ---
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_KEY = os.getenv("AIRTABLE_BASE_KEY")
-AIRTABLE_TABLE_NAME = "fellow"
+AIRTABLE_TABLE_NAME = "fellows"
 AIRTABLE_VIEW_NAME = "Leaderboard Test" # ADDED: View Name
 
 airtable = Airtable(AIRTABLE_BASE_KEY, AIRTABLE_TABLE_NAME, api_key=AIRTABLE_API_KEY)
