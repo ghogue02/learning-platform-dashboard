@@ -4,7 +4,6 @@ import openai
 import os
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, text
-from dotenv import load_dotenv
 import logging
 from openai import OpenAI, APIError
 from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output, format_executive_summary_table_data
@@ -28,7 +27,7 @@ openai.api_key = OPENAI_API_KEY
 # --- Airtable Configuration ---
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_KEY = os.getenv("AIRTABLE_BASE_KEY")
-AIRTABLE_TABLE_NAME = "Fellows"
+AIRTABLE_TABLE_NAME = "fellow"  # Corrected table name to "fellow" (lowercase)
 
 airtable = Airtable(AIRTABLE_BASE_KEY, AIRTABLE_TABLE_NAME, api_key=AIRTABLE_API_KEY)
 
@@ -304,7 +303,7 @@ def display_analysis_summary():
 def display_executive_summary_table(summary_table_data):
     summary_df = pd.DataFrame(summary_table_data)
     summary_df = summary_df.head(5)
-    st.table(summary_df.set_index('Challenge')[['Description', 'Example', 'Severity Level', 'Actionable Recommendation']].rename(columns={'Severity Level': 'Weight'}))
+    st.table(summary_df.set_index('Challenge')[['Description', 'Example', 'Severity Level', 'ActionableRecommendation']].rename(columns={'Severity Level': 'Weight'}))
 
 
 def display_lesson_insights_table(lesson_insights_table_data):
@@ -413,11 +412,6 @@ def analyze_lesson_content(engine, lesson_id, lesson_title, sample_size=500, ret
                     logger.error(f"OpenAI API error during concept analysis: Error code: {e.code} - {e.json_body}") # Log full error details
                     st.error(f"Error analyzing messages. Please try again later. OpenAI API Error: {e.code}") # Display user-friendly error
                     return None # Return None in case of error
-
-            except Exception as e: # Catch generic exceptions too, although APIError is handled specifically in analyze_lesson_content
-                logger.error(f"Unexpected error during concept analysis: {e}") # Log unexpected errors
-                st.error(f"An unexpected error occurred during analysis. Please check logs for details.") # User-friendly error for unexpected issues
-                return None # Return None in case of error
 
 
 def get_lesson_messages_for_concept_analysis(engine, lesson_id, include_ai_responses=False):
@@ -530,16 +524,16 @@ def format_time_since_activity(last_activity_time):
 def fetch_airtable_fellow_data():
     """Fetches Fellow data including profile pictures from Airtable."""
     try:
-        all_records = airtable.get_all(view='Grid view')
+        all_records = airtable.get_all(view='All Fields') # Changed view name to "All Fields"
         fellow_data = []
         for record in all_records:
             fields = record['fields']
             picture_url = None
-            if 'Portrait' in fields and fields['Portrait']: # Corrected field name to "Portrait"
-                picture_url = fields['Portrait'][0]['url'] if fields['Portrait'][0]['url'] else None # Corrected field name to "Portrait"
+            if 'Portrait' in fields and fields['Portrait']:
+                picture_url = fields['Portrait'][0]['url'] if fields['Portrait'][0]['url'] else None
             fellow_data.append({
-                'first_name': fields.get('First Name'), # Use .get() for safety
-                'last_name': fields.get('LastName'), # Corrected field name to "LastName"
+                'first_name': fields.get('First Name'),
+                'last_name': fields.get('LastName'),
                 'profile_picture_url': picture_url
             })
         return fellow_data
@@ -566,15 +560,13 @@ def merge_airtable_pictures(leaderboard_df, airtable_fellow_data):
 
 # --- Styling Function ---
 def style_top_3_and_stripes(df):
-    """Styles the top 3 rows with gold, silver, bronze and adds row stripes."""
+    """Styles the top 3 rows with gold, silver, bronze."""
     is_top_3 = df.index < 3
-    is_even_row = df.index % 2 == 0
 
     styles = pd.DataFrame('', index=df.index, columns=df.columns)
-    styles.loc[is_top_3[0:1], :] = 'background-color: gold; color: black' # Gold for rank 1 (index 0)
-    styles.loc[is_top_3[1:2], :] = 'background-color: silver; color: black' # Silver for rank 2 (index 1)
-    styles.loc[is_top_3[2:3], :] = 'background-color: #CD7F32; color: white' # Bronze for rank 3 (index 2)
-    styles.loc[is_even_row, :] = 'background-color: #262730;'
+    styles.loc[is_top_3, :] = ['background-color: gold; color: black',
+                                  'background-color: silver; color: black',
+                                  'background-color: #CD7F32; color: white']  # Apply different colors based on index
     return styles
 
 
