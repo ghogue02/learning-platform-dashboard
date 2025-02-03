@@ -27,7 +27,8 @@ openai.api_key = OPENAI_API_KEY
 # --- Airtable Configuration ---
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_KEY = os.getenv("AIRTABLE_BASE_KEY")
-AIRTABLE_TABLE_NAME = "fellow"  # Corrected table name to "fellow" (lowercase)
+AIRTABLE_TABLE_NAME = "fellow"
+AIRTABLE_VIEW_NAME = "Leaderboard Test" # ADDED: View Name
 
 airtable = Airtable(AIRTABLE_BASE_KEY, AIRTABLE_TABLE_NAME, api_key=AIRTABLE_API_KEY)
 
@@ -339,6 +340,7 @@ def display_user_leaderboard(engine):
                     ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
                 END
             ), 0) as time_spent_minutes,
+            -- time_spent_minutes as time_spent_learning, -- Added this line back
             -- Count lesson messages from lesson_session_messages for each user
             (SELECT COUNT(*) FROM lesson_session_messages lsm
              INNER JOIN lesson_sessions ls_sub ON lsm.session_id = ls_sub.session_id
@@ -348,7 +350,6 @@ def display_user_leaderboard(engine):
              WHERE cm.user_id = u.user_id AND cm.message_role = 'user' AND cm.created_at >= :start_time) as universal_chat_messages,
             -- MAX(ls.updated_at) as last_activity_time,
             -- COUNT(DISTINCT ls.session_id) FILTER (WHERE ls.updated_at >= :start_time) AS active_sessions_count
-            '' as time_spent_learning, -- Added dummy columns to avoid code break, will be removed
             '' as time_since_last_activity
         FROM users u
         LEFT JOIN lesson_sessions ls ON u.user_id = ls.user_id AND ls.status = 'completed' AND ls.updated_at >= :start_time
@@ -366,7 +367,7 @@ def display_user_leaderboard(engine):
         df_leaderboard = merge_airtable_pictures(df_leaderboard, airtable_data)
 
         df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time) # Re-add time formatting
-        # df_leaderboard['time_since_last_activity'] = df_leaderboard['last_activity_time'].apply(format_time_since_activity) # Removed
+        # df_leaderboard['time_since_last_activity'] = df_leaderboard['time_since_last_activity'].apply(format_time_since_activity) # Removed
 
         # --- Apply Styling ---
         styled_leaderboard = df_leaderboard.style.apply(style_top_3_and_stripes, axis=None)
@@ -398,7 +399,7 @@ def analyze_lesson_content(engine, lesson_id, lesson_title, sample_size=500, ret
 
     if not messages_df.empty:
         current_sample_size = min(sample_size, len(messages_df)) # Use current_sample_size
-        st.info(f"Analyzing a sample of the {current_sample_size} most recent messages from Lesson: '{lesson_title}' (including AI responses: {analyze_ai_responses})")
+        st.info(f"Analyzing a sample of the {current_sample_size} most recent messages from Lesson: '{lesson_title}' (including AI Responses: {analyze_ai_responses})")
         sample_df = messages_df.head(sample_size)
 
         with st.spinner(f"Analyzing lesson conversations for '{lesson_title}' ..."):
@@ -532,7 +533,7 @@ def format_time_since_activity(last_activity_time):
 def fetch_airtable_fellow_data():
     """Fetches Fellow data including profile pictures from Airtable."""
     try:
-        all_records = airtable.get_all(view='All Fields') # Changed view name to "All Fields"
+        all_records = airtable.get_all(view=AIRTABLE_VIEW_NAME) # Changed view name to use variable
         fellow_data = []
         for record in all_records:
             fields = record['fields']
@@ -574,11 +575,11 @@ def style_top_3_and_stripes(df):
 
     styles = pd.DataFrame('', index=df.index, columns=df.columns)
     if len(df) >= 1: # Check if DataFrame has at least 1 row
-        styles.iloc[0, :] = 'background-color: gold; color: black' # Gold for rank 1
+        styles.iloc[0:1, :] = 'background-color: gold; color: black' # Gold for rank 1
     if len(df) >= 2: # Check if DataFrame has at least 2 rows
-        styles.iloc[1, :] = 'background-color: silver; color: black' # Silver for rank 2
+        styles.iloc[1:2, :] = 'background-color: silver; color: black' # Silver for rank 2
     if len(df) >= 3: # Check if DataFrame has at least 3 rows
-        styles.iloc[2, :] = 'background-color: #CD7F32; color: white' # Bronze for rank 3
+        styles.iloc[2:3, :] = 'background-color: #CD7F32; color: white' # Bronze for rank 3
     return styles
 
 
