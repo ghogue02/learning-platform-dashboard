@@ -28,7 +28,7 @@ openai.api_key = OPENAI_API_KEY
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_KEY = os.getenv("AIRTABLE_BASE_KEY")
 AIRTABLE_TABLE_NAME = "fellows"
-AIRTABLE_VIEW_NAME = "Leaderboard Test"
+AIRTABLE_VIEW_NAME = "Leaderboard Test" # ADDED: View Name
 
 airtable = Airtable(AIRTABLE_BASE_KEY, AIRTABLE_TABLE_NAME, api_key=AIRTABLE_API_KEY)
 
@@ -340,7 +340,7 @@ def display_user_leaderboard(engine):
                     ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
                 END
             ), 0) as time_spent_minutes,
-            time_spent_minutes as time_spent_learning, -- Added this line back - for time spent
+            -- time_spent_minutes as time_spent_learning, -- Added this line back
             -- Count lesson messages from lesson_session_messages for each user
             (SELECT COUNT(*) FROM lesson_session_messages lsm
              INNER JOIN lesson_sessions ls_sub ON lsm.session_id = ls_sub.session_id
@@ -533,7 +533,7 @@ def format_time_since_activity(last_activity_time):
 def fetch_airtable_fellow_data():
     """Fetches Fellow data including profile pictures from Airtable."""
     try:
-        all_records = airtable.get_all(view=AIRTABLE_VIEW_NAME) # Changed view name to "All Fields"
+        all_records = airtable.get_all(view=AIRTABLE_VIEW_NAME) # Changed view name to use variable
         fellow_data = []
         for record in all_records:
             fields = record['fields']
@@ -544,8 +544,7 @@ def fetch_airtable_fellow_data():
                 'first_name': fields.get('First Name'),
                 'last_name': fields.get('LastName'),
                 'profile_picture_url': picture_url,
-                'Name': fields.get('Name'), # Fetch combined "Name" field from Airtable
-                'time_spent_minutes': fields.get('time_spent_minutes') # Added to fetch time_spent_minutes
+                'Name': fields.get('Name') # Fetch combined "Name" field from Airtable
             })
         return fellow_data
     except Exception as e:
@@ -563,7 +562,7 @@ def merge_airtable_pictures(leaderboard_df, airtable_fellow_data):
     profile_pictures_list = []
     for index, row in leaderboard_df.iterrows():
         combined_name = f"{row['first_name']} {row['last_name']}" # Create combined name from database
-        profile_pictures_list.append(profile_pictures.get(name_key))
+        profile_pictures_list.append(profile_pictures.get(combined_name)) # Match against combined name
 
     leaderboard_df['profile_picture'] = profile_pictures_list
     return leaderboard_df
@@ -578,9 +577,9 @@ def style_top_3_and_stripes(df):
     if len(df) >= 1: # Check if DataFrame has at least 1 row
         styles.iloc[0:1, :] = 'background-color: gold; color: black' # Gold for rank 1
     if len(df) >= 2: # Check if DataFrame has at least 2 rows
-        styles.iloc[1:2], :] = 'background-color: silver; color: black' # Silver for rank 2
+        styles.iloc[1:2, :] = 'background-color: silver; color: black' # Silver for rank 2
     if len(df) >= 3: # Check if DataFrame has at least 3 rows
-        styles.iloc[2:3], :] = 'background-color: #CD7F32; color: white' # Bronze for rank 3
+        styles.iloc[2:3, :] = 'background-color: #CD7F32; color: white' # Bronze for rank 3
     return styles
 
 
