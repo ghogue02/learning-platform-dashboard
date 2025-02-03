@@ -27,7 +27,7 @@ openai.api_key = OPENAI_API_KEY
 # --- Airtable Configuration ---
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_KEY = os.getenv("AIRTABLE_BASE_KEY")
-AIRTABLE_TABLE_NAME = "fellow"  # Corrected table name to "fellow" (lowercase)
+AIRTABLE_TABLE_NAME = "fellow"
 
 airtable = Airtable(AIRTABLE_BASE_KEY, AIRTABLE_TABLE_NAME, api_key=AIRTABLE_API_KEY)
 
@@ -333,12 +333,12 @@ def display_user_leaderboard(engine):
             u.first_name,
             u.last_name,
             COUNT(DISTINCT ls.lesson_id) AS lessons_completed,
-            COALESCE(SUM(
-                CASE
-                    WHEN EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60 > 120 THEN 120
-                    ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
-                END
-            ), 0) as time_spent_minutes,
+            -- COALESCE(SUM(  -- Removed time_spent_minutes
+            --     CASE
+            --         WHEN EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60 > 120 THEN 120
+            --         ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
+            --     END
+            -- ), 0) as time_spent_minutes,
             -- Count lesson messages from lesson_session_messages for each user
             (SELECT COUNT(*) FROM lesson_session_messages lsm
              INNER JOIN lesson_sessions ls_sub ON lsm.session_id = ls_sub.session_id
@@ -346,8 +346,10 @@ def display_user_leaderboard(engine):
             -- Count universal chat messages from conversation_messages for each user
             (SELECT COUNT(*) FROM conversation_messages cm
              WHERE cm.user_id = u.user_id AND cm.message_role = 'user' AND cm.created_at >= :start_time) as universal_chat_messages,
-            MAX(ls.updated_at) as last_activity_time,
-            COUNT(DISTINCT ls.session_id) FILTER (WHERE ls.updated_at >= :start_time) AS active_sessions_count
+            -- MAX(ls.updated_at) as last_activity_time, -- Removed last_activity_time
+            -- COUNT(DISTINCT ls.session_id) FILTER (WHERE ls.updated_at >= :start_time) AS active_sessions_count -- Removed active_sessions_count
+            '' as time_spent_learning, -- Added dummy columns to avoid code break, will be removed
+            '' as time_since_last_activity
         FROM users u
         LEFT JOIN lesson_sessions ls ON u.user_id = ls.user_id AND ls.status = 'completed' AND ls.updated_at >= :start_time
         GROUP BY u.user_id, u.first_name, u.last_name
@@ -363,8 +365,8 @@ def display_user_leaderboard(engine):
         airtable_data = fetch_airtable_fellow_data()
         df_leaderboard = merge_airtable_pictures(df_leaderboard, airtable_data)
 
-        df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time)
-        df_leaderboard['time_since_last_activity'] = df_leaderboard['last_activity_time'].apply(format_time_since_activity)
+        # df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time) # Removed
+        # df_leaderboard['time_since_last_activity'] = df_leaderboard['last_activity_time'].apply(format_time_since_activity) # Removed
 
         # --- Apply Styling ---
         styled_leaderboard = df_leaderboard.style.apply(style_top_3_and_stripes, axis=None)
@@ -376,13 +378,14 @@ def display_user_leaderboard(engine):
                 "first_name": "First Name",
                 "last_name": "Last Name",
                 "lessons_completed": "Lessons 🎓",
-                "time_spent_learning": "Time Learning ⏱️",
+                "time_spent_learning": None, # Removed column
                 "lesson_messages": "Lesson Messages 💬",
                 "universal_chat_messages": "Chat Messages",
-                "active_sessions_count": "Active Sessions",
-                "time_since_last_activity": "Last Active"
+                "active_sessions_count": None, # Removed column
+                "time_since_last_activity": None # Removed column
             },
-            height=800
+            height=800,
+            hide_index=True # Hide index for cleaner look
         )
 
     except Exception as e:
@@ -412,6 +415,11 @@ def analyze_lesson_content(engine, lesson_id, lesson_title, sample_size=500, ret
                     logger.error(f"OpenAI API error during concept analysis: Error code: {e.code} - {e.json_body}") # Log full error details
                     st.error(f"Error analyzing messages. Please try again later. OpenAI API Error: {e.code}") # Display user-friendly error
                     return None # Return None in case of error
+
+            except Exception as e: # Catch generic exceptions too, although APIError is handled specifically in analyze_lesson_content
+                logger.error(f"Unexpected error during concept analysis: {e}") # Log unexpected errors
+                st.error(f"An unexpected error occurred during analysis. Please check logs for details.") # User-friendly error for unexpected issues
+                return None # Return None in case of error
 
 
 def get_lesson_messages_for_concept_analysis(engine, lesson_id, include_ai_responses=False):
@@ -560,10 +568,16 @@ def merge_airtable_pictures(leaderboard_df, airtable_fellow_data):
 
 # --- Styling Function ---
 def style_top_3_and_stripes(df):
-    """Styles only the top row with gold background color for testing."""
+    """Styles the top 3 rows with gold, silver, bronze."""
+    is_top_3 = df.index < 3
+
     styles = pd.DataFrame('', index=df.index, columns=df.columns)
-    styles.iloc[0, :] = 'background-color: gold; color: black' # Apply to the first row (index 0) only
-    return styles
+    if len(df) >= 1: # Check if DataFrame has at least 1 row
+        styles.iloc[0, :] = 'background-color: gold; color: black' # Gold for rank 1
+    if len(df) >= 2: # Check if DataFrame has at least 2 rows
+        styles.iloc[1, :] = 'background-color: silver; color: black' # Silver for rank 2
+    if len(df) >= 3: # Check if DataFrame has at least 3 rows
+        styles.iloc[2, :] = 'background-color: #CD7F32; color: white' # Bronze for rank 3
     return styles
 
 
