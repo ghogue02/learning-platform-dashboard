@@ -560,13 +560,10 @@ def merge_airtable_pictures(leaderboard_df, airtable_fellow_data):
 
 # --- Styling Function ---
 def style_top_3_and_stripes(df):
-    """Styles the top 3 rows with gold, silver, bronze."""
-    is_top_3 = df.index < 3
-
+    """Styles only the top row with gold background color for testing."""
     styles = pd.DataFrame('', index=df.index, columns=df.columns)
-    styles.loc[is_top_3, :] = ['background-color: gold; color: black',
-                                  'background-color: silver; color: black',
-                                  'background-color: #CD7F32; color: white']  # Apply different colors based on index
+    styles.iloc[0, :] = 'background-color: gold; color: black' # Apply to the first row (index 0) only
+    return styles
     return styles
 
 
