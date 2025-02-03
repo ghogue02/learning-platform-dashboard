@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import openai
@@ -9,38 +8,30 @@ from dotenv import load_dotenv
 import logging
 from openai import OpenAI, APIError
 from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output, format_executive_summary_table_data
+import json
 
 
-# ENSURE set_page_config IS THE FIRST STREAMLIT COMMAND
 st.set_page_config(
     page_title="Learning Platform Analytics Dashboard",
     page_icon="📊",
     layout="wide"
 )
 
-# Configure logging globally
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-#load_dotenv() # No load_dotenv() for Streamlit Cloud
-DB_URL = os.environ.get("DB_URL") # Use os.environ.get() for Streamlit Cloud Secrets
-
+DB_URL = os.environ.get("DB_URL")
 engine = create_engine(DB_URL)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-# Initialize OpenAI
 openai.api_key = OPENAI_API_KEY
 
 
 def main():
     st.title("Learning Platform Analytics Dashboard")
     st.write(f"Streamlit version: **{st.__version__}**")
-    # Create DB engine inside main()
     engine = create_engine(DB_URL)
 
-    # Sidebar Menu
-    menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis", "Analysis Summary", "Curriculum Overview"]
+    menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis", "Analysis Summary", "Curriculum Overview", "Mock Interviews"]
     choice = st.sidebar.selectbox("Navigation", menu)
 
     if choice == "Metrics Dashboard":
@@ -53,6 +44,139 @@ def main():
         display_analysis_summary()
     elif choice == "Curriculum Overview":
         display_curriculum_overview(engine)
+    elif choice == "Mock Interviews":
+        display_mock_interviews(engine)
+
+
+def display_mock_interviews(engine):
+    st.header("Mock Interview Analytics")
+    st.write("Exploring mock interview data.")
+
+    st.subheader("Key Metrics")
+    col1, col2 = st.columns(2)
+
+    total_interviews_query = text("SELECT COUNT(*) FROM interview_sessions")
+    try:
+        with engine.connect() as conn:
+            total_interviews = conn.execute(total_interviews_query).scalar()
+    except Exception as e:
+        logger.error(f"Error fetching total mock interview count: {e}")
+        total_interviews = "Error"
+    col1.metric("Total Mock Interviews", total_interviews)
+
+    avg_feedback_query = text("SELECT AVG(CASE WHEN overall_feedback::TEXT ~ '^\\d+(\\.\\d+)?$' THEN overall_feedback::NUMERIC ELSE NULL END) FROM interview_sessions")
+    try:
+        with engine.connect() as conn:
+            avg_feedback_result = conn.execute(avg_feedback_query).scalar()
+            avg_feedback = round(avg_feedback_result, 2) if avg_feedback_result else "N/A"
+    except Exception as e:
+        logger.error(f"Error fetching average feedback: {e}")
+        avg_feedback = "Error"
+    col2.metric("Average Feedback Score", avg_feedback)
+
+
+    # --- Recent Mock Interview Sessions Table ---
+    st.subheader("Recent Interview Sessions")
+    recent_interviews_query = text("""
+        SELECT
+            isess.int_session_id,
+            u.first_name,
+            u.last_name,
+            isess.overall_feedback,
+            isess.created_at
+        FROM interview_sessions isess
+        JOIN users u ON isess.user_id = u.user_id
+        ORDER BY isess.created_at DESC
+        LIMIT 10
+    """)
+    try:
+        with engine.connect() as conn:
+            recent_interviews_df = pd.read_sql_query(recent_interviews_query, conn)
+            if not recent_interviews_df.empty:
+                recent_interviews_df.rename(columns={
+                    'int_session_id': 'Session ID',
+                    'first_name': 'First Name',
+                    'last_name': 'Last Name',
+                    'overall_feedback': 'Feedback JSON',
+                    'created_at': 'Interview Date'
+                }, inplace=True)
+
+                def extract_interview_score(feedback_json_dict):
+                    logger.info(f"Type of feedback_json_str before parsing: {type(feedback_json_dict)}")
+                    try:
+                        return feedback_json_dict.get('interviewScore')
+                    except (AttributeError, TypeError) as e:
+                        logger.error(f"Error extracting interviewScore from dict: {e}. Data: {feedback_json_dict}")
+                        return None
+
+                recent_interviews_df['Interview Score'] = recent_interviews_df['Feedback JSON'].apply(extract_interview_score)
+
+                def extract_interview_feedback_text(feedback_json_dict):
+                    return feedback_json_dict.get('interviewFeedback')
+
+                recent_interviews_df['Formatted Feedback'] = recent_interviews_df['Feedback JSON'].apply(extract_interview_feedback_text)
+
+                st.dataframe(recent_interviews_df[['Session ID', 'First Name', 'Last Name', 'Interview Score', 'Formatted Feedback', 'Interview Date']], height=500)
+            else:
+                st.info("No mock interview session data available yet for recent sessions.")
+
+    except Exception as e:
+        logger.error(f"Error fetching recent mock interview sessions: {e}")
+        st.error("Error fetching recent mock interview session data.")
+
+
+    # --- Feedback Analysis Section --- --- REMOVED ENTIRE FEEDBACK ANALYSIS SECTION ---
+    # st.subheader("Feedback Analysis")
+
+    # time_ranges_charts = {
+    #     "Last 7 Days": 7,
+    #     "Last 30 Days": 30,
+    #     "Last 90 Days": 90,
+    #     "All Time": 999999
+    # }
+    # selected_range_charts = st.selectbox("Select Time Range for Feedback Charts", list(time_ranges_charts.keys()), key="feedback_time_range_selector")
+    # days_back_charts = time_ranges_charts[selected_range_charts]
+    # start_time_charts = datetime.now() - timedelta(days=days_back_charts) if selected_range_charts != "All Time" else datetime(1970, 1, 1)
+
+    # feedback_trend_query = text("""
+    #     SELECT DATE(created_at) as interview_date, AVG(CASE WHEN overall_feedback::TEXT ~ '^\\d+(\\.\\d+)?$' THEN overall_feedback::NUMERIC ELSE NULL END) as avg_feedback
+    #     FROM interview_sessions
+    #     WHERE overall_feedback IS NOT NULL AND created_at >= :start_time
+    #     GROUP BY interview_date
+    #     ORDER BY interview_date
+    # """)
+    # try:
+    #     with engine.connect() as conn:
+    #         feedback_trend_df = pd.read_sql_query(feedback_trend_query, conn, params={"start_time": start_time_charts})
+    #         if not feedback_trend_df.empty:
+    #             feedback_trend_df.rename(columns={'interview_date': 'Interview Date', 'avg_feedback': 'Average Feedback Score'}, inplace=True)
+    #             feedback_trend_df.set_index('Interview Date', inplace=True)
+    #             st.line_chart(feedback_trend_df, y="Average Feedback Score", height=300, use_container_width=True)
+    #         else:
+    #             st.info("No numeric feedback data available to display Feedback Score Trend chart for the selected time range.")
+    #     except Exception as e:
+    #         logger.error(f"Error fetching feedback trend data: {e}")
+    #         st.error("Error fetching data for Feedback Score Trend chart.")
+
+    # feedback_distribution_query = text("""
+    #     SELECT overall_feedback, COUNT(*) as count
+    #     FROM interview_sessions
+    #     WHERE overall_feedback IS NOT NULL AND created_at >= :start_time
+    #     GROUP BY overall_feedback
+    #     ORDER BY overall_feedback
+    # """)
+    # try:
+    #     with engine.connect() as conn:
+    #         feedback_distribution_df = pd.read_sql_query(feedback_distribution_query, conn, params={"start_time": start_time_charts})
+    #         if not feedback_distribution_df.empty:
+    #             feedback_distribution_df.rename(columns={'overall_feedback': 'Feedback Category', 'count': 'Number of Interviews'}, inplace=True)
+    #             feedback_distribution_df.set_index('Feedback Category', inplace=True)
+    #             st.bar_chart(feedback_distribution_df, height=300, use_container_width=True)
+    #         else:
+    #             st.info("No feedback data available to display Feedback Distribution chart for the selected time range.")
+    #     except Exception as e:
+    #         logger.error(f"Error fetching feedback distribution data: {e}")
+    #         st.error("Error fetching data for Feedback Distribution chart.")
 
 
 def display_curriculum_overview(engine):
@@ -123,7 +247,9 @@ def display_metrics_dashboard(engine):
             (SELECT COUNT(*) FROM lesson_session_messages lsm INNER JOIN lesson_sessions ls_sub ON lsm.session_id = ls_sub.session_id WHERE (ls_sub.created_at >= :start_time OR ls_sub.updated_at >= :start_time)) as lesson_messages,
             -- Count universal chat messages from conversation_messages for the time range (APPROXIMATION)
             (SELECT COUNT(*) FROM conversation_messages cm WHERE cm.message_role = 'user' AND cm.created_at >= :start_time) as universal_chat_messages,
-            (SELECT COUNT(DISTINCT user_id) FROM users WHERE created_at >= :start_time) as new_users
+            (SELECT COUNT(DISTINCT user_id) FROM users WHERE created_at >= :start_time) as new_users,
+            -- Count mock interviews for the selected time range
+            (SELECT COUNT(*) FROM interview_sessions isess WHERE isess.created_at >= :start_time) as mock_interviews_count
     """)
     try:
         with engine.connect() as conn:
@@ -139,49 +265,22 @@ def display_metrics_dashboard(engine):
         lesson_messages = result[3] if result else 0
         universal_chat_messages = result[4] if result else 0
         new_users = result[5] if result else 0
+        mock_interviews_count = result[6] if result else 0
         total_user_messages = lesson_messages + universal_chat_messages
-        total_time_learning = format_time(total_time_learning_minutes) # Format total time
+        total_time_learning = format_time(total_time_learning_minutes)
 
-        col1, col2, col3, col4, col5 = st.columns(5) # Added one more column
+        col1, col2, col3, col4 = st.columns(4)
         col1.metric("Completed Sessions", completed_sessions)
         col2.metric("In-Progress Sessions", in_progress_sessions)
         col3.metric("Lesson Messages", lesson_messages)
         col4.metric("Universal Chat Messages", universal_chat_messages)
-        col5.metric("Total Time Learning", total_time_learning) # New metric - Total Time Learning
-        st.metric("Total User Messages", total_user_messages) # Moved Total User Messages below columns
+
+        st.metric("Total User Messages", total_user_messages)
         st.metric("New Users", new_users)
+        st.metric("Mock Interviews", mock_interviews_count)
 
     else:
         st.error("Failed to fetch daily metrics.")
-
-    overall_query = text("""
-        SELECT
-          (SELECT COUNT(*) FROM users) AS total_users,
-          (SELECT COUNT(DISTINCT lesson_id) FROM lesson_sessions WHERE status='completed') AS total_completed_lessons,
-          (SELECT COUNT(*) FROM lessons) AS total_lessons
-    """)
-    try:
-        with engine.connect() as conn:
-            overall_result = conn.execute(overall_query).fetchone()
-
-        if overall_result:
-            total_users = overall_result[0] if overall_result else 0
-            total_completed_lessons = overall_result[1] if overall_result else 0
-            total_lessons = overall_result[2] if overall_result else 0
-            completion_rate = 0
-            if total_lessons > 0:
-                completion_rate = (total_completed_lessons / total_lessons) * 100
-
-            st.subheader("Overall Progress")
-            colA, colB, colC = st.columns(3)
-            colA.metric("Total Active Users", total_users)
-            colB.metric("Completed Lessons", total_completed_lessons)
-            colC.metric("Completion Rate", f"{completion_rate:.2f}%")
-        else:
-            st.error("Failed to fetch overall progress metrics.")
-    except Exception as e:
-        logger.error(f"Error fetching overall metrics: {e}")
-        st.error(f"Error fetching overall metrics data. Please check logs for details.")
 
     # --- Daily Active Users Chart ---
     daily_users_query = text("""
@@ -195,7 +294,7 @@ def display_metrics_dashboard(engine):
         with engine.connect() as conn:
             daily_users_df = pd.read_sql_query(daily_users_query, conn, params={"start_time": start_time})
             if not daily_users_df.empty:
-                daily_users_df['activity_date'] = pd.to_datetime(daily_users_df['activity_date']).dt.strftime('%Y-%m-%d') # Format date
+                daily_users_df['activity_date'] = pd.to_datetime(daily_users_df['activity_date']).dt.strftime('%Y-%m-%d')
                 daily_users_df.set_index('activity_date', inplace=True)
                 st.subheader("Daily Active Users")
                 st.line_chart(daily_users_df)
@@ -222,10 +321,10 @@ def display_metrics_dashboard(engine):
         with engine.connect() as conn:
             daily_messages_df = pd.read_sql_query(daily_messages_query, conn, params={"start_time": start_time})
             if not daily_messages_df.empty:
-                daily_messages_df['message_date'] = pd.to_datetime(daily_messages_df['message_date']).dt.strftime('%Y-%m-%d') # Format date
+                daily_messages_df['message_date'] = pd.to_datetime(daily_messages_df['message_date']).dt.strftime('%Y-%m-%d')
                 daily_messages_df.set_index('message_date', inplace=True)
                 st.subheader("Daily Total Messages (User)")
-                st.bar_chart(daily_messages_df) # Changed to bar_chart
+                st.bar_chart(daily_messages_df)
             else:
                 st.info("No message data available for the selected time range to display Daily Messages chart.")
 
@@ -245,112 +344,33 @@ def display_metrics_dashboard(engine):
         with engine.connect() as conn:
             cumulative_new_users_df = pd.read_sql_query(cumulative_new_users_query, conn)
             if not cumulative_new_users_df.empty:
-                cumulative_new_users_df['signup_date'] = pd.to_datetime(cumulative_new_users_df['signup_date']).dt.strftime('%Y-%m-%d') # Format date
+                cumulative_new_users_df['signup_date'] = pd.to_datetime(cumulative_new_users_df['signup_date']).dt.strftime('%Y-%m-%d')
                 cumulative_new_users_df.set_index('signup_date', inplace=True)
-                cumulative_new_users_df['cumulative_users'] = cumulative_new_users_df['new_users_count'].cumsum() # Calculate cumulative sum
+                cumulative_new_users_df['cumulative_users'] = cumulative_new_users_df['new_users_count'].cumsum()
                 st.subheader("Cumulative New Users Over Time")
-                st.line_chart(cumulative_new_users_df[['cumulative_users']]) # Chart cumulative users
+                st.line_chart(cumulative_new_users_df[['cumulative_users']])
             else:
                 st.info("No new user signup data available to display Cumulative New Users chart.")
     except Exception as e:
         logger.error(f"Error fetching cumulative new users data: {e}")
         st.error("Error fetching data for Cumulative New Users chart.")
 
-
-    lesson_breakdown_query = text("""
-    SELECT
-      l.title,
-      l.lesson_id,
-      COUNT(DISTINCT ls.user_id) FILTER (WHERE ls.status='completed') AS users_completed,
-      COUNT(DISTINCT ls.user_id) FILTER (WHERE ls.status='in_progress') AS users_in_progress,
-      COUNT(DISTINCT ls.user_id) AS total_users_started
-    FROM lessons l
-    LEFT JOIN lesson_sessions ls ON l.lesson_id = ls.lesson_id
-    GROUP BY l.lesson_id, l.title
-    ORDER BY users_completed DESC
-""")
-
-    try:
-        with engine.connect() as conn:
-            lesson_df = pd.read_sql_query(lesson_breakdown_query, conn)
-
-        if not lesson_df.empty:
-            lesson_df['completion_rate'] = (lesson_df['users_completed'] / lesson_df['total_users_started'] * 100).fillna(0).round(0).astype(int)
-            lesson_df = lesson_df.sort_values(by='users_completed', ascending=False)
-
-            st.subheader("Analyze Lessons") # Subheader for buttons
-
-            analysis_results = {} # Dictionary to store analysis output per lesson
-
-            for index, lesson_row in lesson_df.iterrows(): # Iterate through lesson rows
-                lesson_title = lesson_row['title']
-                lesson_id = str(lesson_row['lesson_id'])
-
-                col1, col2, col3, col4, col5 = st.columns([4, 1, 1, 1, 2]) # Adjust column widths as needed for layout
-                with col1:
-                    st.write(f"**{lesson_title}**") # Lesson title in first column
-                with col2:
-                    st.write(f"Completed: {lesson_row['users_completed']}")
-                with col3:
-                    st.write(f"In Progress: {lesson_row['users_in_progress']}")
-                with col4:
-                    st.write(f"Rate: {lesson_row['completion_rate']}%")
-                with col5:
-                    with st.expander(f"Analysis Options - Lesson: {lesson_title}", expanded=False): # Expander for each lesson
-                        analyze_ai_responses = st.checkbox("Include AI Responses in Analysis", value=True, key=f"ai_checkbox_{lesson_id}_expander") # Checkbox INSIDE expander
-
-                        if st.button("Analyze", key=f"analyze_button_{lesson_id}_expander"): # Analyze button INSIDE expander
-                            analysis_output = analyze_lesson_content(engine, lesson_id, lesson_title, analyze_ai_responses=analyze_ai_responses) # Pass analyze_ai_responses
-
-                            if analysis_output: # Check if analysis output is not None (success)
-                                st.subheader(f"Concept Analysis for Lesson: '{lesson_title}'") # Subheader for each lesson analysis - placed INSIDE expander now
-                                st.write(analysis_output) # Display analysis output within expander - FULL WIDTH
-
-                                messages_df = get_lesson_messages_for_concept_analysis(engine, lesson_id=lesson_id, include_ai_responses=analyze_ai_responses) # Re-fetch messages
-                                if not messages_df.empty:
-                                    sample_size = 500
-                                    sample_df = messages_df.head(sample_size)
-                                    st.subheader(f"Message Activity Timeline (Sample - {min(sample_size, len(messages_df))} messages):") # Subheader inside expander
-                                    timeline_df = sample_df.set_index('created_at')
-                                    timeline_df['count'] = 1
-                                    daily_counts = timeline_df['count'].resample('D').sum()
-                                    st.line_chart(daily_counts)
-
-                                    st.subheader(f"Lesson Message Content (Sample - {min(sample_size, len(messages_df))} messages - User and AI):") # Subheader inside expander
-                                    st.dataframe(sample_df[['created_at', 'role', 'content']])
-                            else:
-                                st.error("Analysis failed. Check logs for details.") # Error message within expander
-
-
-        else:
-            st.info("No lesson progress data available yet.")
-
-    except Exception as e:
-        logger.error(f"Error fetching lesson breakdown for content analysis: {e}")
-        st.error("Error fetching lesson data for content analysis.")
-
-
-
 def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
     st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
 
-    summary_report, lesson_insights_table_data, executive_summary_table_data, lesson_analyses_data = summarize_lesson_analyses() # Get all four return values
+    summary_report, lesson_insights_table_data, executive_summary_table_data, lesson_analyses_data = summarize_lesson_analyses()
 
     if summary_report:
         with st.spinner("Generating analysis summary..."):
-            formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report) # Pass lesson_analyses_data
+            formatted_output_markdown, lesson_insights_table_data = format_lesson_insights_for_output(lesson_analyses_data, summary_report)
 
             st.subheader("Part 1: Executive Summary - Top Curriculum Improvement Priorities")
 
-            # --- ADD THIS DEBUG STATEMENT ---
-            #st.write("Debug: executive_summary_table_data:", executive_summary_table_data)
-            # --- END DEBUG STATEMENT ---
-
-            if executive_summary_table_data: # Check if executive_summary_table_data is not empty
-                display_executive_summary_table(executive_summary_table_data) # Display Executive Summary as table
+            if executive_summary_table_data:
+                display_executive_summary_table(executive_summary_table_data)
             else:
-                st.warning("No Executive Summary data available.") # Warning if no table data
+                st.warning("No Executive Summary data available.")
 
             if lesson_insights_table_data:
                 with st.expander("Part 2: Lesson-Specific Opportunity Insights for Coaches (Click to Expand)", expanded=False):
@@ -360,21 +380,15 @@ def display_analysis_summary():
         st.info("No lesson analysis files found to summarize. Run weekly analysis script to generate the summary.")
 
 
-
 def display_executive_summary_table(summary_table_data):
-    """Displays the Executive Summary in a Streamlit DataFrame table."""
     summary_df = pd.DataFrame(summary_table_data)
-
-    # Limit to the first 5 rows if there are more
     summary_df = summary_df.head(5)
-
-    st.table(summary_df.set_index('Challenge')[['Description', 'Example', 'Severity Level', 'Actionable Recommendation']].rename(columns={'Severity Level': 'Weight'})) # Use st.table, set index, select and rename columns
+    st.table(summary_df.set_index('Challenge')[['Description', 'Example', 'Severity Level', 'Actionable Recommendation']].rename(columns={'Severity Level': 'Weight'}))
 
 
 def display_lesson_insights_table(lesson_insights_table_data):
-    """Displays lesson-specific opportunity insights in a Streamlit Table."""
     insights_df = pd.DataFrame(lesson_insights_table_data)
-    st.table(insights_df.set_index('Lesson Title')[['Opportunity Insights', 'Severity Level']].rename(columns={'Severity Level': 'Weight'})) # Use st.table, set index, select and rename columns
+    st.table(insights_df.set_index('Lesson Title')[['Opportunity Insights', 'Severity Level']].rename(columns={'Severity Level': 'Weight'}))
 
 
 def display_user_leaderboard(engine):
@@ -441,7 +455,7 @@ def analyze_lesson_content(engine, lesson_id, lesson_title, sample_size=500, ret
     if not messages_df.empty:
         current_sample_size = min(sample_size, len(messages_df)) # Use current_sample_size
         st.info(f"Analyzing a sample of the {current_sample_size} most recent messages from Lesson: '{lesson_title}' (including AI responses: {analyze_ai_responses})")
-        sample_df = messages_df.head(current_sample_size)
+        sample_df = messages_df.head(sample_size)
 
         with st.spinner(f"Analyzing lesson conversations for '{lesson_title}' ..."):
             try:
