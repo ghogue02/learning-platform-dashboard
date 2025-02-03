@@ -120,6 +120,23 @@ digraph database_schema {
 <TR><TD ALIGN="LEFT">event_time<BR/><FONT POINT-SIZE="10">VARCHAR(50)</FONT></TD></TR>
 <TR><TD ALIGN="LEFT">status<BR/><FONT POINT-SIZE="10">VARCHAR(50)</FONT></TD></TR>
 </TABLE>>]
+	interview_sessions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>interview_sessions</B></TD></TR>
+<TR><TD ALIGN="LEFT">int_session_id<BR/><FONT POINT-SIZE="10">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">user_id<BR/><FONT POINT-SIZE="10">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">overall_feedback<BR/><FONT POINT-SIZE="10">JSONB</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">created_at<BR/><FONT POINT-SIZE="10">TIMESTAMP</FONT></TD></TR>
+</TABLE>>]
+	question_evaluations [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+<TR><TD><B>question_evaluations</B></TD></TR>
+<TR><TD ALIGN="LEFT">int_question_id<BR/><FONT POINT-SIZE="10">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">user_id<BR/><FONT POINT-SIZE="10">INTEGER</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">question<BR/><FONT POINT-SIZE="10">TEXT</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">response_text<BR/><FONT POINT-SIZE="10">TEXT</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">feedback<BR/><FONT POINT-SIZE="10">TEXT</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">created_at<BR/><FONT POINT-SIZE="10">TIMESTAMP</FONT></TD></TR>
+<TR><TD ALIGN="LEFT">int_session_id<BR/><FONT POINT-SIZE="10">INTEGER</FONT></TD></TR>
+</TABLE>>]
 	threads -> users [label="user_id -> user_id"]
 	conversation_messages -> threads [label="thread_id -> thread_id"]
 	conversation_messages -> users [label="user_id -> user_id"]
@@ -138,4 +155,8 @@ digraph database_schema {
 	user_progress -> users [label="user_id -> user_id"]
 	password_reset_tokens -> users [label="user_id -> user_id"]
 	event_registrations -> users [label="user_id -> user_id"]
+	interview_sessions -> users [label="user_id -> user_id"]
+	interview_sessions -> users [label="user_id -> user_id"]
+	question_evaluations -> interview_sessions [label="int_session_id -> int_session_id"]
+	question_evaluations -> users [label="user_id -> user_id"]
 }
