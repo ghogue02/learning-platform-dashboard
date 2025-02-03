@@ -27,7 +27,7 @@ openai.api_key = OPENAI_API_KEY
 # --- Airtable Configuration ---
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_KEY = os.getenv("AIRTABLE_BASE_KEY")
-AIRTABLE_TABLE_NAME = "fellow"
+AIRTABLE_TABLE_NAME = "fellow"  # Corrected table name to "fellow" (lowercase)
 
 airtable = Airtable(AIRTABLE_BASE_KEY, AIRTABLE_TABLE_NAME, api_key=AIRTABLE_API_KEY)
 
@@ -333,12 +333,12 @@ def display_user_leaderboard(engine):
             u.first_name,
             u.last_name,
             COUNT(DISTINCT ls.lesson_id) AS lessons_completed,
-            -- COALESCE(SUM(  -- Removed time_spent_minutes
-            --     CASE
-            --         WHEN EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60 > 120 THEN 120
-            --         ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
-            --     END
-            -- ), 0) as time_spent_minutes,
+            COALESCE(SUM(
+                CASE
+                    WHEN EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60 > 120 THEN 120
+                    ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
+                END
+            ), 0) as time_spent_minutes,
             -- Count lesson messages from lesson_session_messages for each user
             (SELECT COUNT(*) FROM lesson_session_messages lsm
              INNER JOIN lesson_sessions ls_sub ON lsm.session_id = ls_sub.session_id
@@ -346,8 +346,8 @@ def display_user_leaderboard(engine):
             -- Count universal chat messages from conversation_messages for each user
             (SELECT COUNT(*) FROM conversation_messages cm
              WHERE cm.user_id = u.user_id AND cm.message_role = 'user' AND cm.created_at >= :start_time) as universal_chat_messages,
-            -- MAX(ls.updated_at) as last_activity_time, -- Removed last_activity_time
-            -- COUNT(DISTINCT ls.session_id) FILTER (WHERE ls.updated_at >= :start_time) AS active_sessions_count -- Removed active_sessions_count
+            -- MAX(ls.updated_at) as last_activity_time,
+            -- COUNT(DISTINCT ls.session_id) FILTER (WHERE ls.updated_at >= :start_time) AS active_sessions_count
             '' as time_spent_learning, -- Added dummy columns to avoid code break, will be removed
             '' as time_since_last_activity
         FROM users u
@@ -365,7 +365,7 @@ def display_user_leaderboard(engine):
         airtable_data = fetch_airtable_fellow_data()
         df_leaderboard = merge_airtable_pictures(df_leaderboard, airtable_data)
 
-        # df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time) # Removed
+        df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time) # Re-add time formatting
         # df_leaderboard['time_since_last_activity'] = df_leaderboard['last_activity_time'].apply(format_time_since_activity) # Removed
 
         # --- Apply Styling ---
@@ -378,14 +378,14 @@ def display_user_leaderboard(engine):
                 "first_name": "First Name",
                 "last_name": "Last Name",
                 "lessons_completed": "Lessons 🎓",
-                "time_spent_learning": None, # Removed column
+                "time_spent_learning": "Time Learning ⏱️", # Re-added column
                 "lesson_messages": "Lesson Messages 💬",
                 "universal_chat_messages": "Chat Messages",
-                "active_sessions_count": None, # Removed column
-                "time_since_last_activity": None # Removed column
+                # "active_sessions_count": None, # Removed column
+                # "time_since_last_activity": None # Removed column
             },
             height=800,
-            hide_index=True # Hide index for cleaner look
+            hide_index=True
         )
 
     except Exception as e:
@@ -542,7 +542,8 @@ def fetch_airtable_fellow_data():
             fellow_data.append({
                 'first_name': fields.get('First Name'),
                 'last_name': fields.get('LastName'),
-                'profile_picture_url': picture_url
+                'profile_picture_url': picture_url,
+                'Name': fields.get('Name') # Fetch combined "Name" field from Airtable
             })
         return fellow_data
     except Exception as e:
@@ -553,14 +554,14 @@ def merge_airtable_pictures(leaderboard_df, airtable_fellow_data):
     """Merges Airtable profile picture URLs into the leaderboard DataFrame."""
     profile_pictures = {}
     for fellow in airtable_fellow_data:
-        name_key = (fellow['first_name'], fellow['last_name'])
+        name_key = fellow['Name'] # Use combined "Name" from Airtable as key
         if name_key:
             profile_pictures[name_key] = fellow['profile_picture_url']
 
     profile_pictures_list = []
     for index, row in leaderboard_df.iterrows():
-        name_key = (row['first_name'], row['last_name'])
-        profile_pictures_list.append(profile_pictures.get(name_key))
+        combined_name = f"{row['first_name']} {row['last_name']}" # Create combined name from database
+        profile_pictures_list.append(profile_pictures.get(combined_name)) # Match against combined name
 
     leaderboard_df['profile_picture'] = profile_pictures_list
     return leaderboard_df
