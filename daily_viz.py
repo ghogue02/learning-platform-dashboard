@@ -571,9 +571,9 @@ def style_top_3_and_stripes(df):
     is_even_row = df.index % 2 == 0
 
     styles = pd.DataFrame('', index=df.index, columns=df.columns)
-    styles.loc[is_top_3[0], :] = 'background-color: gold; color: black'
-    styles.loc[is_top_3[1], :] = 'background-color: silver; color: black'
-    styles.loc[is_top_3[2], :] = 'background-color: #CD7F32; color: white'
+    styles.loc[is_top_3[0:1], :] = 'background-color: gold; color: black' # Gold for rank 1 (index 0)
+    styles.loc[is_top_3[1:2], :] = 'background-color: silver; color: black' # Silver for rank 2 (index 1)
+    styles.loc[is_top_3[2:3], :] = 'background-color: #CD7F32; color: white' # Bronze for rank 3 (index 2)
     styles.loc[is_even_row, :] = 'background-color: #262730;'
     return styles
 
