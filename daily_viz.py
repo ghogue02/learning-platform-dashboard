@@ -9,8 +9,9 @@ import logging
 from openai import OpenAI, APIError
 from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output, format_executive_summary_table_data
 import json
+from airtable import Airtable  # Import Airtable library
 
-
+# ENSURE set_page_config IS THE FIRST STREAMLIT COMMAND
 st.set_page_config(
     page_title="Learning Platform Analytics Dashboard",
     page_icon="📊",
@@ -25,11 +26,20 @@ engine = create_engine(DB_URL)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
 
+# --- Airtable Configuration ---
+AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")  # Set Airtable API Key in Streamlit Secrets
+AIRTABLE_BASE_KEY = os.getenv("AIRTABLE_BASE_KEY")  # Set Airtable Base Key in Streamlit Secrets
+AIRTABLE_TABLE_NAME = "Fellows"  # Replace with your Airtable table name
+airtable = Airtable(AIRTABLE_BASE_KEY, AIRTABLE_TABLE_NAME, api_key=AIRTABLE_API_KEY)
+
 
 def main():
     st.title("Learning Platform Analytics Dashboard")
     st.write(f"Streamlit version: **{st.__version__}**")
     engine = create_engine(DB_URL)
+
+    # --- Set Streamlit Theme ---
+    st.set_theme(theme="dark")  # Apply dark theme
 
     menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis", "Analysis Summary", "Curriculum Overview", "Mock Interviews"]
     choice = st.sidebar.selectbox("Navigation", menu)
@@ -74,8 +84,6 @@ def display_mock_interviews(engine):
         avg_feedback = "Error"
     col2.metric("Average Feedback Score", avg_feedback)
 
-
-    # --- Recent Mock Interview Sessions Table ---
     st.subheader("Recent Interview Sessions")
     recent_interviews_query = text("""
         SELECT
@@ -123,60 +131,6 @@ def display_mock_interviews(engine):
     except Exception as e:
         logger.error(f"Error fetching recent mock interview sessions: {e}")
         st.error("Error fetching recent mock interview session data.")
-
-
-    # --- Feedback Analysis Section --- --- REMOVED ENTIRE FEEDBACK ANALYSIS SECTION ---
-    # st.subheader("Feedback Analysis")
-
-    # time_ranges_charts = {
-    #     "Last 7 Days": 7,
-    #     "Last 30 Days": 30,
-    #     "Last 90 Days": 90,
-    #     "All Time": 999999
-    # }
-    # selected_range_charts = st.selectbox("Select Time Range for Feedback Charts", list(time_ranges_charts.keys()), key="feedback_time_range_selector")
-    # days_back_charts = time_ranges_charts[selected_range_charts]
-    # start_time_charts = datetime.now() - timedelta(days=days_back_charts) if selected_range_charts != "All Time" else datetime(1970, 1, 1)
-
-    # feedback_trend_query = text("""
-    #     SELECT DATE(created_at) as interview_date, AVG(CASE WHEN overall_feedback::TEXT ~ '^\\d+(\\.\\d+)?$' THEN overall_feedback::NUMERIC ELSE NULL END) as avg_feedback
-    #     FROM interview_sessions
-    #     WHERE overall_feedback IS NOT NULL AND created_at >= :start_time
-    #     GROUP BY interview_date
-    #     ORDER BY interview_date
-    # """)
-    # try:
-    #     with engine.connect() as conn:
-    #         feedback_trend_df = pd.read_sql_query(feedback_trend_query, conn, params={"start_time": start_time_charts})
-    #         if not feedback_trend_df.empty:
-    #             feedback_trend_df.rename(columns={'interview_date': 'Interview Date', 'avg_feedback': 'Average Feedback Score'}, inplace=True)
-    #             feedback_trend_df.set_index('Interview Date', inplace=True)
-    #             st.line_chart(feedback_trend_df, y="Average Feedback Score", height=300, use_container_width=True)
-    #         else:
-    #             st.info("No numeric feedback data available to display Feedback Score Trend chart for the selected time range.")
-    #     except Exception as e:
-    #         logger.error(f"Error fetching feedback trend data: {e}")
-    #         st.error("Error fetching data for Feedback Score Trend chart.")
-
-    # feedback_distribution_query = text("""
-    #     SELECT overall_feedback, COUNT(*) as count
-    #     FROM interview_sessions
-    #     WHERE overall_feedback IS NOT NULL AND created_at >= :start_time
-    #     GROUP BY overall_feedback
-    #     ORDER BY overall_feedback
-    # """)
-    # try:
-    #     with engine.connect() as conn:
-    #         feedback_distribution_df = pd.read_sql_query(feedback_distribution_query, conn, params={"start_time": start_time_charts})
-    #         if not feedback_distribution_df.empty:
-    #             feedback_distribution_df.rename(columns={'overall_feedback': 'Feedback Category', 'count': 'Number of Interviews'}, inplace=True)
-    #             feedback_distribution_df.set_index('Feedback Category', inplace=True)
-    #             st.bar_chart(feedback_distribution_df, height=300, use_container_width=True)
-    #         else:
-    #             st.info("No feedback data available to display Feedback Distribution chart for the selected time range.")
-    #     except Exception as e:
-    #         logger.error(f"Error fetching feedback distribution data: {e}")
-    #         st.error("Error fetching data for Feedback Distribution chart.")
 
 
 def display_curriculum_overview(engine):
@@ -282,78 +236,6 @@ def display_metrics_dashboard(engine):
     else:
         st.error("Failed to fetch daily metrics.")
 
-    # --- Daily Active Users Chart ---
-    daily_users_query = text("""
-        SELECT DATE(ls.updated_at) as activity_date, COUNT(DISTINCT ls.user_id) as daily_active_users
-        FROM lesson_sessions ls
-        WHERE ls.updated_at >= :start_time
-        GROUP BY activity_date
-        ORDER BY activity_date
-    """)
-    try:
-        with engine.connect() as conn:
-            daily_users_df = pd.read_sql_query(daily_users_query, conn, params={"start_time": start_time})
-            if not daily_users_df.empty:
-                daily_users_df['activity_date'] = pd.to_datetime(daily_users_df['activity_date']).dt.strftime('%Y-%m-%d')
-                daily_users_df.set_index('activity_date', inplace=True)
-                st.subheader("Daily Active Users")
-                st.line_chart(daily_users_df)
-            else:
-                st.info("No user activity data available for the selected time range to display Daily Active Users chart.")
-    except Exception as e:
-        logger.error(f"Error fetching daily active users data: {e}")
-        st.error("Error fetching data for Daily Active Users chart.")
-
-
-    # --- Daily Messages Chart (Bar Chart) ---
-    daily_messages_query = text("""
-        SELECT DATE(msg_time) as message_date, COUNT(*) as daily_messages
-        FROM (
-            SELECT lsm.created_at as msg_time FROM lesson_session_messages lsm
-            UNION ALL
-            SELECT cm.created_at as msg_time FROM conversation_messages cm WHERE cm.message_role = 'user'
-        ) as all_messages
-        WHERE msg_time >= :start_time
-        GROUP BY message_date
-        ORDER BY message_date
-    """)
-    try:
-        with engine.connect() as conn:
-            daily_messages_df = pd.read_sql_query(daily_messages_query, conn, params={"start_time": start_time})
-            if not daily_messages_df.empty:
-                daily_messages_df['message_date'] = pd.to_datetime(daily_messages_df['message_date']).dt.strftime('%Y-%m-%d')
-                daily_messages_df.set_index('message_date', inplace=True)
-                st.subheader("Daily Total Messages (User)")
-                st.bar_chart(daily_messages_df)
-            else:
-                st.info("No message data available for the selected time range to display Daily Messages chart.")
-
-    except Exception as e:
-        logger.error(f"Error fetching daily messages data: {e}")
-        st.error("Error fetching data for Daily Messages chart.")
-
-    # --- Cumulative New Users Chart ---
-    cumulative_new_users_query = text("""
-        SELECT DATE(created_at) as signup_date, COUNT(DISTINCT user_id) as new_users_count
-        FROM users
-        WHERE created_at <= NOW() -- Consider all signups up to now
-        GROUP BY signup_date
-        ORDER BY signup_date
-    """)
-    try:
-        with engine.connect() as conn:
-            cumulative_new_users_df = pd.read_sql_query(cumulative_new_users_query, conn)
-            if not cumulative_new_users_df.empty:
-                cumulative_new_users_df['signup_date'] = pd.to_datetime(cumulative_new_users_df['signup_date']).dt.strftime('%Y-%m-%d')
-                cumulative_new_users_df.set_index('signup_date', inplace=True)
-                cumulative_new_users_df['cumulative_users'] = cumulative_new_users_df['new_users_count'].cumsum()
-                st.subheader("Cumulative New Users Over Time")
-                st.line_chart(cumulative_new_users_df[['cumulative_users']])
-            else:
-                st.info("No new user signup data available to display Cumulative New Users chart.")
-    except Exception as e:
-        logger.error(f"Error fetching cumulative new users data: {e}")
-        st.error("Error fetching data for Cumulative New Users chart.")
 
 def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
@@ -439,10 +321,31 @@ def display_user_leaderboard(engine):
         with engine.connect() as conn:
             df_leaderboard = pd.read_sql_query(leaderboard_query, conn, params={"start_time": start_time})
 
+        # --- Fetch Profile Pictures from Airtable ---
+        airtable_data = fetch_airtable_fellow_data()  # Fetch Airtable data
+        df_leaderboard = merge_airtable_pictures(df_leaderboard, airtable_data) # Merge pictures
+
         df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time)
         df_leaderboard['time_since_last_activity'] = df_leaderboard['last_activity_time'].apply(format_time_since_activity)
 
-        st.dataframe(df_leaderboard[['first_name', 'last_name', 'lessons_completed', 'time_spent_learning', 'lesson_messages', 'universal_chat_messages', 'active_sessions_count', 'time_since_last_activity']], height=800)
+        # --- Apply Styling ---
+        styled_leaderboard = df_leaderboard.style.apply(style_top_3_and_stripes, axis=None)
+
+        st.dataframe(
+            styled_leaderboard, # Use styled dataframe
+            column_config={ # Column configurations for better display
+                "profile_picture": st.column_config.ImageColumn("Profile"), # Image column for profile picture
+                "first_name": "First Name", # Rename columns for display
+                "last_name": "Last Name",
+                "lessons_completed": "Lessons 🎓", # Add icons to headers
+                "time_spent_learning": "Time Learning ⏱️",
+                "lesson_messages": "Lesson Messages 💬",
+                "universal_chat_messages": "Chat Messages",
+                "active_sessions_count": "Active Sessions",
+                "time_since_last_activity": "Last Active"
+            },
+            height=800
+        )
 
     except Exception as e:
         logger.error(f"Error fetching leaderboard: {e}")
@@ -455,7 +358,7 @@ def analyze_lesson_content(engine, lesson_id, lesson_title, sample_size=500, ret
     if not messages_df.empty:
         current_sample_size = min(sample_size, len(messages_df)) # Use current_sample_size
         st.info(f"Analyzing a sample of the {current_sample_size} most recent messages from Lesson: '{lesson_title}' (including AI responses: {analyze_ai_responses})")
-        sample_df = messages_df.head(sample_size)
+        sample_df = messages_df.head(current_sample_size)
 
         with st.spinner(f"Analyzing lesson conversations for '{lesson_title}' ..."):
             try:
@@ -582,6 +485,58 @@ def format_time_since_activity(last_activity_time):
         return f"{minutes} minutes ago"
     else:
         return "Just now"
+
+# --- Airtable Functions ---
+@st.cache_data(ttl=3600)  # Cache Airtable data for 1 hour
+def fetch_airtable_fellow_data():
+    """Fetches Fellow data including profile pictures from Airtable."""
+    try:
+        all_records = airtable.get_all(view='Grid view') # Replace 'Grid view' with your actual view name if needed
+        fellow_data = []
+        for record in all_records:
+            fields = record['fields']
+            picture_url = None
+            if 'Profile Picture' in fields and fields['Profile Picture']: # Check if 'Profile Picture' field exists and is not empty
+                picture_url = fields['Profile Picture'][0]['url'] if fields['Profile Picture'][0]['url'] else None # Get URL, handle potential empty URL
+            fellow_data.append({
+                'first_name': fields.get('First Name'), # Use .get() for safety
+                'last_name': fields.get('Last Name'),
+                'profile_picture_url': picture_url
+            })
+        return fellow_data
+    except Exception as e:
+        logger.error(f"Error fetching data from Airtable: {e}")
+        return []
+
+def merge_airtable_pictures(leaderboard_df, airtable_fellow_data):
+    """Merges Airtable profile picture URLs into the leaderboard DataFrame."""
+    profile_pictures = {}
+    for fellow in airtable_fellow_data:
+        name_key = (fellow['first_name'], fellow['last_name'])
+        if name_key: # Ensure name key is valid
+            profile_pictures[name_key] = fellow['profile_picture_url']
+
+    profile_pictures_list = []
+    for index, row in leaderboard_df.iterrows():
+        name_key = (row['first_name'], row['last_name'])
+        profile_pictures_list.append(profile_pictures.get(name_key)) # Get picture URL, default to None if no match
+
+    leaderboard_df['profile_picture'] = profile_pictures_list # Add profile picture column
+    return leaderboard_df
+
+
+# --- Styling Function ---
+def style_top_3_and_stripes(df):
+    """Styles the top 3 rows with gold, silver, bronze and adds row stripes."""
+    is_top_3 = df.index < 3 # Assuming DataFrame is already sorted by rank
+    is_even_row = df.index % 2 == 0
+
+    styles = pd.DataFrame('', index=df.index, columns=df.columns)
+    styles.loc[is_top_3[0], :] = 'background-color: gold; color: black' # Gold for rank 1 (index 0)
+    styles.loc[is_top_3[1], :] = 'background-color: silver; color: black' # Silver for rank 2 (index 1)
+    styles.loc[is_top_3[2], :] = 'background-color: #CD7F32; color: white' # Bronze for rank 3 (index 2)
+    styles.loc[is_even_row, :] = 'background-color: #262730;' # Row striping (darker background for even rows in dark theme)
+    return styles
 
 
 if __name__ == "__main__":
