@@ -362,18 +362,12 @@ def display_user_leaderboard(engine):
         with engine.connect() as conn:
             df_leaderboard = pd.read_sql_query(leaderboard_query, conn, params={"start_time": start_time})
 
-        # --- Fetch Profile Pictures from Airtable ---
-        airtable_data = fetch_airtable_fellow_data()
-        df_leaderboard = merge_airtable_pictures(df_leaderboard, airtable_data)
+            # --- Fetch Profile Pictures from Airtable ---
+            airtable_data = fetch_airtable_fellow_data()
+            df_leaderboard = merge_airtable_pictures(df_leaderboard, airtable_data)
 
-        df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time) # Re-add time formatting
-        # df_leaderboard['time_since_last_activity'] = df_leaderboard['time_since_last_activity'].apply(format_time_since_activity) # Removed
-
-        # --- Apply Styling ---
-        styled_leaderboard = df_leaderboard.style.apply(style_top_3_and_stripes, axis=None)
-
-        st.dataframe(
-            styled_leaderboard[[ # Specify columns and order here
+            # --- Reorder columns of df_leaderboard BEFORE styling ---
+            ordered_columns = [
                 'profile_picture',
                 'first_name',
                 'last_name',
@@ -381,19 +375,26 @@ def display_user_leaderboard(engine):
                 'time_spent_learning',
                 'lesson_messages',
                 'universal_chat_messages'
-            ]],
-            column_config={
-                "profile_picture": st.column_config.ImageColumn("Portrait"), # Portrait first
-                "first_name": "First Name",
-                "last_name": "Last Name",
-                "lessons_completed": "Lessons 🎓",
-                "time_spent_learning": "Time Learning ⏱️",
-                "lesson_messages": "Lesson Messages 💬",
-                "universal_chat_messages": "Chat Messages 💬"
-            },
-            height=800,
-            hide_index=True
-        )
+            ]
+            df_leaderboard_ordered = df_leaderboard[ordered_columns]
+
+            # --- Apply Styling to the ORDERED DataFrame ---
+            styled_leaderboard = df_leaderboard_ordered.style.apply(style_top_3_and_stripes, axis=None)
+
+            st.dataframe(
+                styled_leaderboard,
+                column_config={
+                    "profile_picture": st.column_config.ImageColumn("Portrait"),
+                    "first_name": "First Name",
+                    "last_name": "Last Name", 
+                    "lessons_completed": "Lessons 🎓",
+                    "time_spent_learning": "Time Learning ⏱️",
+                    "lesson_messages": "Lesson Messages 💬",
+                    "universal_chat_messages": "Chat Messages",
+                },
+                height=800,
+                hide_index=True
+            )
 
     except Exception as e:
         logger.error(f"Error fetching leaderboard: {e}")
