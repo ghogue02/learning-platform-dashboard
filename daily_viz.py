@@ -373,21 +373,27 @@ def display_user_leaderboard(engine):
         styled_leaderboard = df_leaderboard.style.apply(style_top_3_and_stripes, axis=None)
 
         st.dataframe(
-            styled_leaderboard,
-            column_config={
-                "profile_picture": st.column_config.ImageColumn("Portrait"),
-                "first_name": "First Name",
-                "last_name": "Last Name",
-                "lessons_completed": "Lessons 🎓",
-                "time_spent_learning": "Time Learning ⏱️", # Re-added column
-                "lesson_messages": "Lesson Messages 💬",
-                "universal_chat_messages": "Chat Messages",
-                # "active_sessions_count": None, # Removed column
-                # "time_since_last_activity": None # Removed column
-            },
-            height=800,
-            hide_index=True
-        )
+    styled_leaderboard[[ # Specify columns and order here
+        'profile_picture',
+        'first_name',
+        'last_name',
+        'lessons_completed',
+        'time_spent_learning',
+        'lesson_messages',
+        'universal_chat_messages'
+    ]],
+    column_config={
+        "profile_picture": st.column_config.ImageColumn("Portrait"), # Portrait first
+        "first_name": "First Name",
+        "last_name": "Last Name",
+        "lessons_completed": "Lessons 🎓",
+        "time_spent_learning": "Time Learning ⏱️",
+        "lesson_messages": "Lesson Messages 💬",
+        "universal_chat_messages": "Chat Messages",
+    },
+    height=800,
+    hide_index=True
+)
 
     except Exception as e:
         logger.error(f"Error fetching leaderboard: {e}")
