@@ -65,8 +65,8 @@ def main():
             .css-1bb5s3u { /* Metric label color */
                 color: #ddd; /* Slightly lighter text for labels */
             }
-            /* --- CSS to make profile pictures larger --- */
-            .stDataFrame img {
+            /* --- More Specific CSS for profile pictures --- */
+            .stDataFrame tr > td:nth-child(1) img { /* Target images in the FIRST column's td */
                 width: 60px !important; /* Increased width */
                 height: 60px !important; /* Increased height */
                 border-radius: 50%; /* Optional: Keep circular shape */
