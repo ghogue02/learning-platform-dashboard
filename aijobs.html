@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Role Transformation – Award Winning Design</title>
+  <!-- Import a modern font -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* Basic Reset */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    
+    /* Fullscreen, animated gradient background */
+    body {
+      font-family: 'Montserrat', sans-serif;
+      overflow: hidden;
+      background: linear-gradient(45deg, #1a1a1a, #333333, #1a1a1a);
+      background-size: 400% 400%;
+      animation: gradientShift 20s ease infinite;
+      color: #fff;
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    /* Ticker container takes up full viewport */
+    .ticker {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
+    /* The vertically scrolling container – two copies for seamless looping */
+    .ticker__inner {
+      position: absolute;
+      width: 100%;
+      top: 0;
+      left: 0;
+      animation: scrollUp linear infinite;
+    }
+    @keyframes scrollUp {
+      from { transform: translateY(0); }
+      to   { transform: translateY(-50%); }
+    }
+    
+    /* Each row is a sleek, modern block */
+    .row {
+      width: 100%;
+      padding: 30px 20px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      opacity: 0.95;
+      transition: opacity 0.4s ease;
+    }
+    /* When in view, we slightly brighten the row */
+    .row.transform { opacity: 1; }
+    
+    /* The text element that transforms – overlaid spans */
+    .job-transform {
+      position: relative;
+      display: inline-block;
+      font-size: 2em;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .job-transform .job-original,
+    .job-transform .job-enhanced {
+      display: block;
+      white-space: nowrap;
+    }
+    /* Original text in classic white */
+    .job-transform .job-original {
+      color: #fff;
+      transition: opacity 0.6s ease-out;
+    }
+    /* Enhanced text in vibrant cyan – initially hidden by a left-to-right clip */
+    .job-transform .job-enhanced {
+      position: absolute;
+      top: 0;
+      left: 0;
+      color: #0af;
+      clip-path: inset(0 100% 0 0);
+      transition: clip-path 0.8s ease-out;
+    }
+    /* When the row gets the 'transform' class, fade out the original and reveal the enhanced */
+    .row.transform .job-transform .job-original {
+      opacity: 0;
+    }
+    .row.transform .job-transform .job-enhanced {
+      clip-path: inset(0 0 0 0);
+    }
+  </style>
+</head>
+<body>
+  <div class="ticker">
+    <div class="ticker__inner" id="tickerInner">
+      <!-- The ticker rows are dynamically injected below -->
+    </div>
+  </div>
+  
+  <script>
+    // The list of job pairs
+    const roles = [
+      { original: "Dishwasher", enhanced: "Kitchen Systems Operator" },
+      { original: "Busser", enhanced: "Service Flow Coordinator" },
+      { original: "Line Cook", enhanced: "AI Kitchen Specialist" },
+      { original: "Fast Food Worker", enhanced: "Restaurant Tech Coordinator" },
+      { original: "Retail Associate", enhanced: "Digital Retail Consultant" },
+      { original: "Stock Clerk", enhanced: "Inventory AI Manager" },
+      { original: "Cashier", enhanced: "Digital Commerce Specialist" },
+      { original: "Janitor", enhanced: "Facilities Tech Supervisor" },
+      { original: "Housekeeper", enhanced: "Smart Space Manager" },
+      { original: "Parking Attendant", enhanced: "Automated Lot Supervisor" },
+      { original: "Laundry Worker", enhanced: "Laundry Systems Specialist" },
+      { original: "Car Washer", enhanced: "Auto Care Technician" },
+      { original: "Food Runner", enhanced: "Service Flow Optimizer" },
+      { original: "Gas Attendant", enhanced: "Energy Station Manager" },
+      { original: "Barista", enhanced: "Beverage Systems Specialist" },
+      { original: "Server Assistant", enhanced: "Guest Experience Coordinator" },
+      { original: "Delivery Driver", enhanced: "Logistics AI Coordinator" },
+      { original: "Security Guard", enhanced: "Security Systems Operator" },
+      { original: "Movie Usher", enhanced: "Entertainment Experience Manager" },
+      { original: "Custodian", enhanced: "Smart Facility Manager" },
+      { original: "Room Attendant", enhanced: "Hospitality Tech Specialist" },
+      { original: "Kitchen Helper", enhanced: "Kitchen Operations Analyst" },
+      { original: "Cart Collector", enhanced: "Cart Systems Monitor" },
+      { original: "Drive-Thru Operator", enhanced: "Digital Orders Manager" },
+      { original: "Shelf Stocker", enhanced: "Inventory Flow Specialist" },
+      { original: "Prep Cook", enhanced: "AI Prep Coordinator" },
+      { original: "Valet Parker", enhanced: "Vehicle Systems Manager" },
+      { original: "Warehouse Worker", enhanced: "Warehouse Tech Specialist" },
+      { original: "Package Handler", enhanced: "Logistics Flow Coordinator" },
+      { original: "Store Greeter", enhanced: "Digital Welcome Ambassador" },
+      { original: "Concession Worker", enhanced: "Concessions Tech Specialist" },
+      { original: "Kennel Assistant", enhanced: "Pet Care Technologist" },
+      { original: "Hostess", enhanced: "Guest Flow Manager" },
+      { original: "Sales Clerk", enhanced: "AI Sales Specialist" },
+      { original: "Cafeteria Worker", enhanced: "Food Service Technician" },
+      { original: "Groundskeeper", enhanced: "Grounds Tech Manager" },
+      { original: "Dietary Aide", enhanced: "Nutrition Systems Coordinator" },
+      { original: "Car Detailer", enhanced: "Vehicle Enhancement Specialist" },
+      { original: "Ticket Taker", enhanced: "Access Control Manager" },
+      { original: "Crew Member", enhanced: "Operations Tech Specialist" },
+      { original: "Deli Worker", enhanced: "Deli Systems Coordinator" },
+      { original: "Baggage Handler", enhanced: "Luggage Systems Operator" },
+      { original: "Garden Center Worker", enhanced: "Plant Tech Specialist" },
+      { original: "Pet Groomer", enhanced: "Pet Styling Technologist" },
+      { original: "Produce Clerk", enhanced: "Fresh Food Technician" },
+      { original: "Bakery Assistant", enhanced: "Baking Systems Specialist" },
+      { original: "Floral Assistant", enhanced: "Floral Design Technologist" },
+      { original: "Dish Room Worker", enhanced: "Sanitation Tech Operator" },
+      { original: "Front Desk Clerk", enhanced: "Digital Hospitality Manager" },
+      { original: "Pool Attendant", enhanced: "Aquatics Systems Specialist" }
+    ];
+    
+    const tickerInner = document.getElementById('tickerInner');
+    
+    // Build one complete copy (group) of ticker rows
+    function createTickerGroup() {
+      const fragment = document.createDocumentFragment();
+      roles.forEach(role => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        
+        const transformDiv = document.createElement('div');
+        transformDiv.className = 'job-transform';
+        
+        const spanOriginal = document.createElement('span');
+        spanOriginal.className = 'job-original';
+        spanOriginal.textContent = role.original;
+        
+        const spanEnhanced = document.createElement('span');
+        spanEnhanced.className = 'job-enhanced';
+        spanEnhanced.textContent = role.enhanced;
+        
+        transformDiv.appendChild(spanOriginal);
+        transformDiv.appendChild(spanEnhanced);
+        row.appendChild(transformDiv);
+        fragment.appendChild(row);
+      });
+      return fragment;
+    }
+    
+    // Append two copies so the scroll loops seamlessly
+    tickerInner.appendChild(createTickerGroup());
+    tickerInner.appendChild(createTickerGroup());
+    
+    // Once the page loads, set the scrolling duration based on one group's height
+    window.addEventListener('load', () => {
+      const groupHeight = tickerInner.firstElementChild.offsetHeight;
+      const speed = 2; // pixels per second
+      const duration = groupHeight / speed;
+      tickerInner.style.animationDuration = duration + 's';
+    });
+    
+    // Use Intersection Observer to trigger the transformation effect
+    const options = {
+      root: document.querySelector('.ticker'),
+      threshold: 1
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('transform');
+        } else {
+          entry.target.classList.remove('transform');
+        }
+      });
+    }, options);
+    
+    // Observe every row in the ticker
+    document.querySelectorAll('.row').forEach(row => {
+      observer.observe(row);
+    });
+  </script>
+</body>
+</html>
