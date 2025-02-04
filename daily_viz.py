@@ -65,6 +65,12 @@ def main():
             .css-1bb5s3u { /* Metric label color */
                 color: #ddd; /* Slightly lighter text for labels */
             }
+            /* --- CSS to make profile pictures larger --- */
+            .stDataFrame img {
+                width: 60px !important; /* Increased width */
+                height: 60px !important; /* Increased height */
+                border-radius: 50%; /* Optional: Keep circular shape */
+            }
         </style>
         """,
         unsafe_allow_html=True,
