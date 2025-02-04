@@ -366,17 +366,20 @@ def display_user_leaderboard(engine):
             airtable_data = fetch_airtable_fellow_data()
             df_leaderboard = merge_airtable_pictures(df_leaderboard, airtable_data)
 
+            df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time) # Re-add time formatting
+
             # --- Reorder columns of df_leaderboard BEFORE styling ---
             ordered_columns = [
                 'profile_picture',
                 'first_name',
                 'last_name',
                 'lessons_completed',
-                'time_spent_learning', # <-- ADD BACK THIS LINE
+                'time_spent_learning', # <-- KEEP THIS LINE
                 'lesson_messages',
                 'universal_chat_messages'
-            ] # Re-added 'time_spent_learning' to ordered_columns
+            ]
             df_leaderboard_ordered = df_leaderboard[ordered_columns]
+
 
             # --- Apply Styling to the ORDERED DataFrame ---
             styled_leaderboard = df_leaderboard_ordered.style.apply(style_top_3_and_stripes, axis=None)
@@ -388,17 +391,17 @@ def display_user_leaderboard(engine):
                     "first_name": "First Name",
                     "last_name": "Last Name",
                     "lessons_completed": "Lessons 🎓",
-                    "time_spent_learning": "Time Learning ⏱️", # <-- ADD BACK THIS LINE
+                    "time_spent_learning": "Time Learning ⏱️", # <-- KEEP THIS LINE
                     "lesson_messages": "Lesson Messages 💬",
                     "universal_chat_messages": "Chat Messages",
-                }, # Re-added "time_spent_learning" to column_config
+                },
                 height=800,
                 hide_index=True
             )
+
     except Exception as e:
         logger.error(f"Error fetching leaderboard: {e}")
         st.error("Failed to load leaderboard data.")
-
 
 def analyze_lesson_content(engine, lesson_id, lesson_title, sample_size=500, retry_count=0, max_retries=3, analyze_ai_responses=False): # Added analyze_ai_responses to params
     messages_df = get_lesson_messages_for_concept_analysis(engine, lesson_id=lesson_id, include_ai_responses=analyze_ai_responses) # Use passed analyze_ai_responses
