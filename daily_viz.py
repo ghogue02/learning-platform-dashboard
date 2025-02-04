@@ -395,7 +395,7 @@ def display_user_leaderboard(engine):
                     "lesson_messages": "Lesson Messages 💬",
                     "universal_chat_messages": "Chat Messages",
                 },
-                height=3200,
+                height=800,
                 hide_index=True
             )
 
