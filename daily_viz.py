@@ -372,10 +372,10 @@ def display_user_leaderboard(engine):
                 'first_name',
                 'last_name',
                 'lessons_completed',
-                'time_spent_learning',
+                'time_spent_learning', # <-- ADD BACK THIS LINE
                 'lesson_messages',
                 'universal_chat_messages'
-            ]
+            ] # Re-added 'time_spent_learning' to ordered_columns
             df_leaderboard_ordered = df_leaderboard[ordered_columns]
 
             # --- Apply Styling to the ORDERED DataFrame ---
@@ -386,16 +386,15 @@ def display_user_leaderboard(engine):
                 column_config={
                     "profile_picture": st.column_config.ImageColumn("Portrait"),
                     "first_name": "First Name",
-                    "last_name": "Last Name", 
+                    "last_name": "Last Name",
                     "lessons_completed": "Lessons 🎓",
-                    "time_spent_learning": "Time Learning ⏱️",
+                    "time_spent_learning": "Time Learning ⏱️", # <-- ADD BACK THIS LINE
                     "lesson_messages": "Lesson Messages 💬",
                     "universal_chat_messages": "Chat Messages",
-                },
+                }, # Re-added "time_spent_learning" to column_config
                 height=800,
                 hide_index=True
             )
-
     except Exception as e:
         logger.error(f"Error fetching leaderboard: {e}")
         st.error("Failed to load leaderboard data.")
