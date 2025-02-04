@@ -120,7 +120,7 @@ def display_mock_interviews(engine):
 
 
 @st.cache_data(ttl=120) # Cache recent interviews data for 2 minutes
-def fetch_recent_interview_data(engine):
+def fetch_recent_interview_data(_engine):
     recent_interviews_query = text("""
         SELECT
             isess.int_session_id,
@@ -134,7 +134,7 @@ def fetch_recent_interview_data(engine):
         LIMIT 10
     """)
     try:
-        with engine.connect() as conn:
+        with _engine.connect() as conn: # Use '_engine' here as well
             recent_interviews_df = pd.read_sql_query(recent_interviews_query, conn)
             return recent_interviews_df
     except Exception as e:
