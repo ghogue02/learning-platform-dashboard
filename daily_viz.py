@@ -1,3 +1,5 @@
+# --- START OF FILE daily_viz.py ---
+
 import streamlit as st
 import pandas as pd
 import openai
@@ -346,7 +348,6 @@ def display_user_leaderboard(engine):
                     ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
                 END
             ), 0) as time_spent_minutes,
-            -- time_spent_minutes as time_spent_learning, -- Added this line back
             -- Count lesson messages from lesson_session_messages for each user
             (SELECT COUNT(*) FROM lesson_session_messages lsm
              INNER JOIN lesson_sessions ls_sub ON lsm.session_id = ls_sub.session_id
@@ -354,9 +355,7 @@ def display_user_leaderboard(engine):
             -- Count universal chat messages from conversation_messages for each user
             (SELECT COUNT(*) FROM conversation_messages cm
              WHERE cm.user_id = u.user_id AND cm.message_role = 'user' AND cm.created_at >= :start_time) as universal_chat_messages,
-            -- MAX(ls.updated_at) as last_activity_time,
-            -- COUNT(DISTINCT ls.session_id) FILTER (WHERE ls.updated_at >= :start_time) AS active_sessions_count
-            '' as time_since_last_activity
+            MAX(ls.updated_at) as last_activity_time
         FROM users u
         LEFT JOIN lesson_sessions ls ON u.user_id = ls.user_id AND ls.status = 'completed' AND ls.updated_at >= :start_time
         GROUP BY u.user_id, u.first_name, u.last_name
@@ -372,7 +371,11 @@ def display_user_leaderboard(engine):
             airtable_data = fetch_airtable_fellow_data()
             df_leaderboard = merge_airtable_pictures(df_leaderboard, airtable_data)
 
-            df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time) # Re-add time formatting
+            df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time)
+
+            # Calculate time since last activity
+            df_leaderboard['time_since_last_activity'] = df_leaderboard['last_activity_time'].apply(format_time_since_activity)
+
 
             # --- Reorder columns of df_leaderboard BEFORE styling ---
             ordered_columns = [
@@ -380,9 +383,10 @@ def display_user_leaderboard(engine):
                 'first_name',
                 'last_name',
                 'lessons_completed',
-                'time_spent_learning', # <-- KEEP THIS LINE
+                'time_spent_learning',
                 'lesson_messages',
-                'universal_chat_messages'
+                'universal_chat_messages',
+                'time_since_last_activity' # Add the new column
             ]
             df_leaderboard_ordered = df_leaderboard[ordered_columns]
 
@@ -397,9 +401,10 @@ def display_user_leaderboard(engine):
                     "first_name": "First Name",
                     "last_name": "Last Name",
                     "lessons_completed": "Lessons 🎓",
-                    "time_spent_learning": "Time Learning ⏱️", # <-- KEEP THIS LINE
+                    "time_spent_learning": "Time Learning ⏱️",
                     "lesson_messages": "Lesson Messages 💬",
                     "universal_chat_messages": "Chat Messages",
+                    "time_since_last_activity": "Last Activity" # Add a user-friendly name
                 },
                 height=800,
                 hide_index=True
