@@ -270,19 +270,89 @@ def display_metrics_dashboard(engine):
         total_user_messages = lesson_messages + universal_chat_messages
         total_time_learning = format_time(total_time_learning_minutes)
 
+
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Completed Sessions", completed_sessions)
         col2.metric("In-Progress Sessions", in_progress_sessions)
         col3.metric("Lesson Messages", lesson_messages)
         col4.metric("Universal Chat Messages", universal_chat_messages)
 
-        st.metric("Total User Messages", total_user_messages)
+        # Display Total User Messages and Total Time Spent Learning side-by-side
+        col5, col6 = st.columns(2)  # Create two columns for the new metrics
+        col5.metric("Total User Messages", total_user_messages)
+        col6.metric("Total Time Learning", total_time_learning) # Display formatted time
+
         st.metric("New Users", new_users)
         st.metric("Mock Interviews", mock_interviews_count)
 
+
+        # --- Cumulative Charts ---
+        st.subheader("Cumulative Metrics Over Time")
+
+        # Cumulative Total Messages
+        messages_query = text("""
+            SELECT
+                DATE(created_at) as date,
+                COUNT(*) as message_count
+            FROM conversation_messages
+            WHERE message_role = 'user' AND created_at >= :start_time
+            GROUP BY DATE(created_at)
+            ORDER BY DATE(created_at)
+        """)
+
+        try:
+            with engine.connect() as conn:
+                messages_df = pd.read_sql_query(messages_query, conn, params={"start_time": start_time})
+                messages_df['cumulative_messages'] = messages_df['message_count'].cumsum()
+                st.line_chart(messages_df, x='date', y='cumulative_messages')
+        except Exception as e:
+            logger.error(f"Error fetching cumulative messages data: {e}")
+            st.error("Failed to load cumulative messages chart.")
+
+        # Cumulative Total Users
+        users_query = text("""
+            SELECT
+                DATE(created_at) as date,
+                COUNT(DISTINCT user_id) as user_count
+            FROM users
+            WHERE created_at >= :start_time
+            GROUP BY DATE(created_at)
+            ORDER BY DATE(created_at)
+        """)
+        try:
+            with engine.connect() as conn:
+                users_df = pd.read_sql_query(users_query, conn, params={"start_time": start_time})
+                users_df['cumulative_users'] = users_df['user_count'].cumsum()
+                st.line_chart(users_df, x='date', y='cumulative_users')
+        except Exception as e:
+            logger.error(f"Error fetching cumulative users data: {e}")
+            st.error("Failed to load cumulative users chart.")
+
+        # Cumulative Total Time Spent Learning
+        time_query = text("""
+            SELECT
+                DATE(ls.created_at) as date,
+                SUM(CASE
+                    WHEN EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60 > 120 THEN 120
+                    ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
+                END) as time_spent_minutes
+            FROM lesson_sessions ls
+            WHERE ls.status = 'completed' AND (ls.created_at >= :start_time OR ls.updated_at >= :start_time)
+            GROUP BY DATE(ls.created_at)
+            ORDER BY DATE(ls.created_at)
+        """)
+        try:
+            with engine.connect() as conn:
+                time_df = pd.read_sql_query(time_query, conn, params={"start_time": start_time})
+                time_df['cumulative_time'] = time_df['time_spent_minutes'].cumsum()
+                st.line_chart(time_df, x='date', y='cumulative_time')
+        except Exception as e:
+            logger.error(f"Error fetching cumulative time spent data: {e}")
+            st.error("Failed to load cumulative time spent chart.")
+
+
     else:
         st.error("Failed to fetch daily metrics.")
-
 
 def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
