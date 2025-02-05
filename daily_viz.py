@@ -278,9 +278,9 @@ def display_metrics_dashboard(engine):
         col4.metric("Universal Chat Messages", universal_chat_messages)
 
         # Display Total User Messages and Total Time Spent Learning side-by-side
-        col5, col6 = st.columns(2)  # Create two columns for the new metrics
+        col5, col6 = st.columns(2)
         col5.metric("Total User Messages", total_user_messages)
-        col6.metric("Total Time Learning", total_time_learning) # Display formatted time
+        col6.metric("Total Time Learning", total_time_learning)
 
         st.metric("New Users", new_users)
         st.metric("Mock Interviews", mock_interviews_count)
@@ -289,20 +289,31 @@ def display_metrics_dashboard(engine):
         # --- Cumulative Charts ---
         st.subheader("Cumulative Metrics Over Time")
 
-        # Cumulative Total Messages
+        # Cumulative Total User Messages
+        st.write("**Cumulative User Messages**")  # Added header
         messages_query = text("""
             SELECT
-                DATE(created_at) as date,
+                DATE(lsm.created_at) as date,
                 COUNT(*) as message_count
-            FROM conversation_messages
-            WHERE message_role = 'user' AND created_at >= :start_time
-            GROUP BY DATE(created_at)
-            ORDER BY DATE(created_at)
+            FROM lesson_session_messages lsm
+            INNER JOIN lesson_sessions ls ON lsm.session_id = ls.session_id
+            WHERE (ls.created_at >= :start_time OR ls.updated_at >= :start_time)
+            GROUP BY DATE(lsm.created_at)
+            UNION ALL
+            SELECT
+                DATE(cm.created_at) as date,
+                COUNT(*) as message_count
+            FROM conversation_messages cm
+            WHERE cm.message_role = 'user' AND cm.created_at >= :start_time
+            GROUP BY DATE(cm.created_at)
+            ORDER BY date
         """)
 
         try:
             with engine.connect() as conn:
                 messages_df = pd.read_sql_query(messages_query, conn, params={"start_time": start_time})
+                # Group by date and sum the message_count *after* the UNION
+                messages_df = messages_df.groupby('date')['message_count'].sum().reset_index()
                 messages_df['cumulative_messages'] = messages_df['message_count'].cumsum()
                 st.line_chart(messages_df, x='date', y='cumulative_messages')
         except Exception as e:
@@ -310,6 +321,7 @@ def display_metrics_dashboard(engine):
             st.error("Failed to load cumulative messages chart.")
 
         # Cumulative Total Users
+        st.write("**Cumulative New Users**")  # Added header
         users_query = text("""
             SELECT
                 DATE(created_at) as date,
@@ -329,6 +341,7 @@ def display_metrics_dashboard(engine):
             st.error("Failed to load cumulative users chart.")
 
         # Cumulative Total Time Spent Learning
+        st.write("**Cumulative Time Spent (Hours)**")  # Added header
         time_query = text("""
             SELECT
                 DATE(ls.created_at) as date,
@@ -344,8 +357,10 @@ def display_metrics_dashboard(engine):
         try:
             with engine.connect() as conn:
                 time_df = pd.read_sql_query(time_query, conn, params={"start_time": start_time})
-                time_df['cumulative_time'] = time_df['time_spent_minutes'].cumsum()
-                st.line_chart(time_df, x='date', y='cumulative_time')
+                time_df['cumulative_time_minutes'] = time_df['time_spent_minutes'].cumsum()
+                # Convert cumulative minutes to hours
+                time_df['cumulative_time_hours'] = time_df['cumulative_time_minutes'] / 60
+                st.line_chart(time_df, x='date', y='cumulative_time_hours')
         except Exception as e:
             logger.error(f"Error fetching cumulative time spent data: {e}")
             st.error("Failed to load cumulative time spent chart.")
@@ -353,7 +368,7 @@ def display_metrics_dashboard(engine):
 
     else:
         st.error("Failed to fetch daily metrics.")
-
+        
 def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
     st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
