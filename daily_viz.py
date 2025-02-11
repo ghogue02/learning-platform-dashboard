@@ -529,7 +529,8 @@ def display_content_analysis(engine):
     selected_lesson_title = st.selectbox("Select Lesson to Analyze", lesson_titles)
 
     if selected_lesson_title != "<Select a Lesson>":
-        selected_lesson_id = lessons_df[lessons_df['title'] == selected_lesson_title]['lesson_id'].iloc[0]
+        # CONVERT TO PYTHON INTEGER HERE
+        selected_lesson_id = int(lessons_df[lessons_df['title'] == selected_lesson_title]['lesson_id'].iloc[0])
         st.subheader(f"Analysis for Lesson: '{selected_lesson_title}' (Lesson ID: {selected_lesson_id})")
 
         analysis_type = st.selectbox("Analysis Type", ["Concept Understanding Analysis", "Keyword Analysis (Deprecated)"])
