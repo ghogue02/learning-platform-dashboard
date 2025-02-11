@@ -1,5 +1,4 @@
 
-
 import streamlit as st
 import pandas as pd
 import openai
@@ -512,7 +511,7 @@ def display_content_analysis(engine):
     st.header("Content Analysis")
     st.write("This section allows you to analyze the content of specific lessons to understand user engagement and comprehension.")
 
-    lessons_query = text("SELECT lesson_id, title FROM lessons ORDER BY unit_id, lesson_order")
+    lessons_query = text("SELECT lesson_id, title FROM lessons ORDER BY unit_id, title") # Removed lesson_order, ordering by title instead
     try:
         with engine.connect() as conn:
             lessons_df = pd.read_sql_query(lessons_query, conn)
