@@ -507,6 +507,56 @@ def display_user_leaderboard(engine):
         logger.error(f"Error fetching leaderboard: {e}")
         st.error("Failed to load leaderboard data.")
 
+# --- ADD DISPLAY_CONTENT_ANALYSIS FUNCTION HERE ---
+def display_content_analysis(engine):
+    st.header("Content Analysis")
+    st.write("This section allows you to analyze the content of specific lessons to understand user engagement and comprehension.")
+
+    lessons_query = text("SELECT lesson_id, title FROM lessons ORDER BY unit_id, lesson_order")
+    try:
+        with engine.connect() as conn:
+            lessons_df = pd.read_sql_query(lessons_query, conn)
+    except Exception as e:
+        logger.error(f"Error fetching lessons for content analysis: {e}")
+        st.error("Error fetching lesson list for content analysis.")
+        return
+
+    if lessons_df.empty:
+        st.info("No lessons found in the database.")
+        return
+
+    lesson_titles = lessons_df['title'].tolist()
+    lesson_titles.insert(0, "<Select a Lesson>") # Add placeholder option
+    selected_lesson_title = st.selectbox("Select Lesson to Analyze", lesson_titles)
+
+    if selected_lesson_title != "<Select a Lesson>":
+        selected_lesson_id = lessons_df[lessons_df['title'] == selected_lesson_title]['lesson_id'].iloc[0]
+        st.subheader(f"Analysis for Lesson: '{selected_lesson_title}' (Lesson ID: {selected_lesson_id})")
+
+        analysis_type = st.selectbox("Analysis Type", ["Concept Understanding Analysis", "Keyword Analysis (Deprecated)"])
+
+        if analysis_type == "Concept Understanding Analysis":
+            analyze_ai_responses = st.checkbox("Include AI Responses in Analysis", value=False) # Added checkbox for AI responses
+            if st.button("Run Concept Analysis"):
+                lesson_analysis_result = analyze_lesson_content(engine, selected_lesson_id, selected_lesson_title, analyze_ai_responses=analyze_ai_responses) # Pass analyze_ai_responses
+                if lesson_analysis_result:
+                    st.write("### Concept Understanding Analysis Results:")
+                    st.write(lesson_analysis_result)
+                else:
+                    st.error("Failed to perform concept analysis. Check logs for errors.")
+
+        elif analysis_type == "Keyword Analysis (Deprecated)":
+            st.warning("Keyword Analysis is deprecated and may not provide insightful results. Consider using Concept Understanding Analysis instead.")
+            if st.button("Run Keyword Analysis"):
+                messages_df_keywords = get_lesson_messages_for_concept_analysis(engine, lesson_id=selected_lesson_id) # Re-use function for keyword analysis too for now
+                if not messages_df_keywords.empty:
+                    keyword_analysis_result = analyze_keywords_with_percent(messages_df_keywords)
+                    st.write("### Keyword Analysis Results:")
+                    st.write(keyword_analysis_result)
+                else:
+                    st.info("No user messages found for this lesson to perform keyword analysis.")
+
+
 def analyze_lesson_content(engine, lesson_id, lesson_title, sample_size=500, retry_count=0, max_retries=3, analyze_ai_responses=False): # Added analyze_ai_responses to params
     messages_df = get_lesson_messages_for_concept_analysis(engine, lesson_id=lesson_id, include_ai_responses=analyze_ai_responses) # Use passed analyze_ai_responses
 
