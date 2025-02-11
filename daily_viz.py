@@ -1,4 +1,4 @@
-# --- START OF FILE daily_viz.py ---
+
 
 import streamlit as st
 import pandas as pd
@@ -368,7 +368,7 @@ def display_metrics_dashboard(engine):
 
     else:
         st.error("Failed to fetch daily metrics.")
-        
+
 def display_analysis_summary():
     st.header("Overall Lesson Analysis Summary")
     st.write("This section provides a summary of the weekly lesson content analysis, highlighting key challenges and actionable recommendations for curriculum improvement.")
@@ -397,7 +397,15 @@ def display_analysis_summary():
 def display_executive_summary_table(summary_table_data):
     summary_df = pd.DataFrame(summary_table_data)
     summary_df = summary_df.head(5)
-    st.table(summary_df.set_index('Challenge')[['Description', 'Example', 'Severity Level', 'ActionableRecommendation']].rename(columns={'Severity Level': 'Weight'}))
+    columns_to_display = ['Description', 'Example', 'Severity Level']
+    if 'ActionableRecommendation' in summary_df.columns:
+        columns_to_display.append('ActionableRecommendation')
+    elif 'Actionable Recommendation' in summary_df.columns: # Check for space
+        columns_to_display.append('Actionable Recommendation') # Use with space if exists
+    else:
+        logger.warning("Column 'ActionableRecommendation' or 'Actionable Recommendation' not found in executive summary data.")
+
+    st.table(summary_df.set_index('Challenge')[columns_to_display].rename(columns={'Severity Level': 'Weight'}))
 
 
 def display_lesson_insights_table(lesson_insights_table_data):
