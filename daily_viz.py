@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import openai
@@ -10,6 +9,8 @@ from openai import OpenAI, APIError
 from summarize_analyses import summarize_lesson_analyses, format_lesson_insights_for_output, format_executive_summary_table_data
 import json
 from airtable import Airtable
+from dotenv import load_dotenv
+load_dotenv()
 
 st.set_page_config(
     page_title="Learning Platform Analytics Dashboard",
@@ -21,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 DB_URL = os.environ.get("DB_URL")
-engine = create_engine(DB_URL)
+# engine = create_engine(DB_URL) # Moved inside functions
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
 
@@ -33,11 +34,16 @@ AIRTABLE_VIEW_NAME = "Leaderboard Test" # ADDED: View Name
 
 airtable = Airtable(AIRTABLE_BASE_KEY, AIRTABLE_TABLE_NAME, api_key=AIRTABLE_API_KEY)
 
+# --- Static Folder Configuration ---
+STATIC_FOLDER = os.path.join(os.getcwd(), "data") # Path to your 'data' directory
+print(f"DEBUG: Static Folder Path: {STATIC_FOLDER}") # DEBUG PRINT - Check path
+# -----------------------------------------------------
+
 
 def main():
     st.title("Learning Platform Analytics Dashboard")
     st.write(f"Streamlit version: **{st.__version__}**")
-    engine = create_engine(DB_URL)
+    engine = create_engine(DB_URL) # Create engine here
 
     # --- Apply Basic Dark Theme using CSS ---
     st.markdown(
@@ -83,17 +89,21 @@ def main():
 
     if choice == "Metrics Dashboard":
         display_metrics_dashboard(engine)
+        engine.dispose()
     elif choice == "User Leaderboard":
         display_user_leaderboard(engine)
+        engine.dispose()
     elif choice == "Content Analysis":
         display_content_analysis(engine)
+        engine.dispose()
     elif choice == "Analysis Summary":
-        display_analysis_summary()
+        display_analysis_summary() # No engine needed
     elif choice == "Curriculum Overview":
         display_curriculum_overview(engine)
+        engine.dispose()
     elif choice == "Mock Interviews":
         display_mock_interviews(engine)
-
+        engine.dispose()
 
 def display_mock_interviews(engine):
     st.header("Mock Interview Analytics")
@@ -416,95 +426,422 @@ def display_user_leaderboard(engine):
     st.header("User Leaderboard")
     st.write("Note: 'Universal Chat Messages' count is approximated and may not be perfectly accurate without a clear distinction in the database.")
 
-    time_ranges = {
-        "All Time": 999999,
-        "Last 7 Days": 7,
-        "Last 30 Days": 30
-    }
-    selected_range = st.selectbox("Time Range for Completions", list(time_ranges.keys()))
-    days_back = time_ranges[selected_range]
+    # Create tabs for different views
+    tab1, tab2 = st.tabs(["Leaderboard View", "Detailed User View"])
+    
+    with tab1:
+        # --- Filtering and Search Options ---
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            time_ranges = {
+                "All Time": 999999,
+                "Last 7 Days": 7,
+                "Last 30 Days": 30
+            }
+            selected_range = st.selectbox("Time Range", list(time_ranges.keys()))
+            days_back = time_ranges[selected_range]
 
-    if selected_range == "All Time":
-        start_time = datetime(1970, 1, 1)
-    else:
-        start_time = datetime.now() - timedelta(days=days_back)
+        with col2:
+            sort_options = {
+                "Lessons Completed": "lessons_completed",
+                "Time Spent Learning": "time_spent_minutes",
+                "Recent Activity": "last_activity_time",
+                "Engagement (Messages)": "total_messages"
+            }
+            sort_by = st.selectbox("Sort By", list(sort_options.keys()))
+            sort_column = sort_options[sort_by]
+            
+        with col3:
+            search_term = st.text_input("Search Users", placeholder="Enter name...")
+        
+        # --- Pagination Controls ---
+        col4, col5 = st.columns([3, 1])
+        with col4:
+            page_size_options = [10, 20, 50, 100]
+            page_size = st.select_slider("Users per page", options=page_size_options, value=20)
+        
+        with col5:
+            show_inactive = st.checkbox("Include Inactive", value=False)
 
-    leaderboard_query = text("""
-        SELECT
-            u.first_name,
-            u.last_name,
-            COUNT(DISTINCT ls.lesson_id) AS lessons_completed,
-            COALESCE(SUM(
-                CASE
-                    WHEN EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60 > 120 THEN 120
-                    ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
-                END
-            ), 0) as time_spent_minutes,
-            -- Count lesson messages from lesson_session_messages for each user
-            (SELECT COUNT(*) FROM lesson_session_messages lsm
-             INNER JOIN lesson_sessions ls_sub ON lsm.session_id = ls_sub.session_id
-             WHERE ls_sub.user_id = u.user_id AND (ls_sub.created_at >= :start_time OR ls_sub.updated_at >= :start_time)) as lesson_messages,
-            -- Count universal chat messages from conversation_messages for each user
-            (SELECT COUNT(*) FROM conversation_messages cm
-             WHERE cm.user_id = u.user_id AND cm.message_role = 'user' AND cm.created_at >= :start_time) as universal_chat_messages,
-            MAX(ls.updated_at) as last_activity_time
-        FROM users u
-        LEFT JOIN lesson_sessions ls ON u.user_id = ls.user_id AND ls.status = 'completed' AND ls.updated_at >= :start_time
-        GROUP BY u.user_id, u.first_name, u.last_name
-        ORDER BY lessons_completed DESC
-        LIMIT 20
-    """)
+        if selected_range == "All Time":
+            start_time = datetime(1970, 1, 1)
+        else:
+            start_time = datetime.now() - timedelta(days=days_back)
 
-    try:
-        with engine.connect() as conn:
-            df_leaderboard = pd.read_sql_query(leaderboard_query, conn, params={"start_time": start_time})
-
-            # --- Fetch Profile Pictures from Airtable ---
-            airtable_data = fetch_airtable_fellow_data()
-            df_leaderboard = merge_airtable_pictures(df_leaderboard, airtable_data)
-
-            df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time)
-
-            # Calculate time since last activity
-            df_leaderboard['time_since_last_activity'] = df_leaderboard['last_activity_time'].apply(format_time_since_activity)
-
-
-            # --- Reorder columns of df_leaderboard BEFORE styling ---
-            ordered_columns = [
-                'profile_picture',
-                'first_name',
-                'last_name',
-                'lessons_completed',
-                'time_spent_learning',
-                'lesson_messages',
-                'universal_chat_messages',
-                'time_since_last_activity' # Add the new column
-            ]
-            df_leaderboard_ordered = df_leaderboard[ordered_columns]
-
-
-            # --- Apply Styling to the ORDERED DataFrame ---
-            styled_leaderboard = df_leaderboard_ordered.style.apply(style_top_3_and_stripes, axis=None)
-
-            st.dataframe(
-                styled_leaderboard,
-                column_config={
-                    "profile_picture": st.column_config.ImageColumn("Portrait"),
-                    "first_name": "First Name",
-                    "last_name": "Last Name",
-                    "lessons_completed": "Lessons 🎓",
-                    "time_spent_learning": "Time Learning ⏱️",
-                    "lesson_messages": "Lesson Messages 💬",
-                    "universal_chat_messages": "Chat Messages",
-                    "time_since_last_activity": "Last Activity" # Add a user-friendly name
-                },
-                height=800,
-                hide_index=True
+        # --- Enhanced SQL Query with Additional Metrics ---
+        leaderboard_query = text("""
+            WITH user_metrics AS (
+                SELECT
+                    u.user_id,
+                    u.first_name,
+                    u.last_name,
+                    u.email,
+                    u.created_at as user_created_at,
+                    COUNT(DISTINCT ls.lesson_id) AS lessons_completed,
+                    -- Calculate total lessons available for completion percentage
+                    (SELECT COUNT(*) FROM lessons) as total_lessons,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60 > 120 THEN 120
+                            ELSE EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
+                        END
+                    ), 0) as time_spent_minutes,
+                    -- Count lesson messages
+                    (SELECT COUNT(*) FROM lesson_session_messages lsm
+                     INNER JOIN lesson_sessions ls_sub ON lsm.session_id = ls_sub.session_id
+                     WHERE ls_sub.user_id = u.user_id AND (ls_sub.created_at >= :start_time OR ls_sub.updated_at >= :start_time)) as lesson_messages,
+                    -- Count universal chat messages
+                    (SELECT COUNT(*) FROM conversation_messages cm
+                     WHERE cm.user_id = u.user_id AND cm.message_role = 'user' AND cm.created_at >= :start_time) as universal_chat_messages,
+                    -- Last activity time
+                    MAX(ls.updated_at) as last_activity_time,
+                    -- Calculate active days (streak potential)
+                    (SELECT COUNT(DISTINCT DATE(activity_time))
+                     FROM (
+                         SELECT ls_days.updated_at as activity_time FROM lesson_sessions ls_days
+                         WHERE ls_days.user_id = u.user_id AND ls_days.updated_at >= :start_time
+                         UNION ALL
+                         SELECT cm_days.created_at FROM conversation_messages cm_days
+                         WHERE cm_days.user_id = u.user_id AND cm_days.created_at >= :start_time
+                     ) as activity_dates) as active_days,
+                    -- Calculate submissions
+                    (SELECT COUNT(*) FROM submissions s WHERE s.user_id = u.user_id AND s.created_at >= :start_time) as submissions_count
+                FROM users u
+                LEFT JOIN lesson_sessions ls ON u.user_id = ls.user_id AND ls.status = 'completed' AND ls.updated_at >= :start_time
+                GROUP BY u.user_id, u.first_name, u.last_name, u.email, u.created_at
             )
+            SELECT
+                user_id,
+                first_name,
+                last_name,
+                email,
+                user_created_at,
+                lessons_completed,
+                total_lessons,
+                CASE
+                    WHEN total_lessons > 0 THEN (lessons_completed::float / total_lessons) * 100
+                    ELSE 0
+                END as completion_percentage,
+                time_spent_minutes,
+                lesson_messages,
+                universal_chat_messages,
+                (lesson_messages + universal_chat_messages) as total_messages,
+                last_activity_time,
+                active_days,
+                submissions_count,
+                CASE
+                    WHEN last_activity_time >= NOW() - INTERVAL '1 day' THEN true
+                    ELSE false
+                END as active_today
+            FROM user_metrics
+            WHERE 1=1
+                AND (first_name ILIKE :search_term OR last_name ILIKE :search_term OR :search_term = '')
+                AND (last_activity_time IS NOT NULL OR :show_inactive = true)
+            ORDER BY
+                CASE WHEN :sort_column = 'lessons_completed' THEN lessons_completed END DESC,
+                CASE WHEN :sort_column = 'time_spent_minutes' THEN time_spent_minutes END DESC,
+                CASE WHEN :sort_column = 'last_activity_time' THEN last_activity_time END DESC,
+                CASE WHEN :sort_column = 'total_messages' THEN (lesson_messages + universal_chat_messages) END DESC
+        """)
 
-    except Exception as e:
-        logger.error(f"Error fetching leaderboard: {e}")
-        st.error("Failed to load leaderboard data.")
+        try:
+            # Get total count for pagination
+            count_query = text("""
+                SELECT COUNT(*) FROM users u
+                WHERE (:search_term = '' OR u.first_name ILIKE :search_term OR u.last_name ILIKE :search_term)
+            """)
+            
+            with engine.connect() as conn:
+                total_users = conn.execute(count_query, {"search_term": f"%{search_term}%"}).scalar()
+                
+                # Calculate total pages
+                total_pages = (total_users + page_size - 1) // page_size
+                
+                # Add page selector
+                col_pages_left, col_pages_right = st.columns([3, 1])
+                with col_pages_left:
+                    st.write(f"Showing {min(total_users, page_size)} of {total_users} users")
+                
+                with col_pages_right:
+                    page_number = st.number_input("Page", min_value=1, max_value=max(1, total_pages), value=1, step=1)
+                
+                # Calculate offset
+                offset = (page_number - 1) * page_size
+                
+                # Add pagination to query
+                paginated_query = text(f"{leaderboard_query.text} LIMIT :page_size OFFSET :offset")
+                
+                # Execute query with all parameters
+                df_leaderboard = pd.read_sql_query(
+                    paginated_query,
+                    conn,
+                    params={
+                        "start_time": start_time,
+                        "search_term": f"%{search_term}%",
+                        "sort_column": sort_column,
+                        "show_inactive": show_inactive,
+                        "page_size": page_size,
+                        "offset": offset
+                    }
+                )
+
+                # --- Fetch Profile Pictures from Airtable ---
+                airtable_data = fetch_airtable_fellow_data()
+                df_leaderboard = merge_airtable_pictures(df_leaderboard, airtable_data)
+
+                # --- Format columns for display ---
+                df_leaderboard['time_spent_learning'] = df_leaderboard['time_spent_minutes'].apply(format_time)
+                df_leaderboard['time_since_last_activity'] = df_leaderboard['last_activity_time'].apply(format_time_since_activity)
+                
+                # --- Add visual progress bar ---
+                df_leaderboard['progress_bar'] = df_leaderboard['completion_percentage'].apply(
+                    lambda x: create_progress_bar(x)
+                )
+                
+                # --- Add streak indicator ---
+                df_leaderboard['streak_indicator'] = df_leaderboard.apply(
+                    lambda row: '🔥' if row['active_today'] else '⚪', axis=1
+                )
+
+                # --- Reorder and select columns for display ---
+                ordered_columns = [
+                    'profile_picture',
+                    'streak_indicator',
+                    'first_name',
+                    'last_name',
+                    'lessons_completed',
+                    'progress_bar',
+                    'time_spent_learning',
+                    'active_days',
+                    'total_messages',
+                    'submissions_count',
+                    'time_since_last_activity'
+                ]
+                df_leaderboard_ordered = df_leaderboard[ordered_columns]
+
+                # --- Apply Styling to the ORDERED DataFrame ---
+                styled_leaderboard = df_leaderboard_ordered.style.apply(style_top_3_and_stripes, axis=None)
+
+                st.dataframe(
+                    styled_leaderboard,
+                    column_config={
+                        "profile_picture": st.column_config.ImageColumn("Portrait"),
+                        "streak_indicator": st.column_config.Column("Streak"),
+                        "first_name": "First Name",
+                        "last_name": "Last Name",
+                        "lessons_completed": "Lessons 🎓",
+                        "progress_bar": st.column_config.ProgressColumn(
+                            "Curriculum Progress",
+                            help="Percentage of total curriculum completed",
+                            format="%d%%",
+                            min_value=0,
+                            max_value=100
+                        ),
+                        "time_spent_learning": "Time Learning ⏱️",
+                        "active_days": "Active Days",
+                        "total_messages": "Total Messages 💬",
+                        "submissions_count": "Submissions",
+                        "time_since_last_activity": "Last Activity"
+                    },
+                    height=600,
+                    hide_index=True
+                )
+                
+                # --- Add summary metrics ---
+                st.subheader("Cohort Summary")
+                metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+                
+                with metric_col1:
+                    avg_completion = df_leaderboard['completion_percentage'].mean()
+                    st.metric("Avg. Completion", f"{avg_completion:.1f}%")
+                
+                with metric_col2:
+                    avg_time = df_leaderboard['time_spent_minutes'].mean()
+                    st.metric("Avg. Learning Time", format_time(avg_time))
+                
+                with metric_col3:
+                    active_users = df_leaderboard['active_today'].sum()
+                    st.metric("Active Today", f"{active_users} users")
+                
+                with metric_col4:
+                    avg_messages = df_leaderboard['total_messages'].mean()
+                    st.metric("Avg. Messages", f"{avg_messages:.1f}")
+
+        except Exception as e:
+            logger.error(f"Error fetching leaderboard: {e}")
+            st.error(f"Failed to load leaderboard data: {e}")
+    
+    with tab2:
+        st.subheader("Detailed User Analysis")
+        
+        # User selector
+        with engine.connect() as conn:
+            users_query = text("""
+                SELECT user_id, first_name, last_name
+                FROM users
+                ORDER BY first_name, last_name
+            """)
+            users_df = pd.read_sql_query(users_query, conn)
+            users_df['full_name'] = users_df['first_name'] + ' ' + users_df['last_name']
+            
+            selected_user_name = st.selectbox(
+                "Select User",
+                options=users_df['full_name'].tolist(),
+                index=0
+            )
+            
+            # Convert numpy.int64 to Python int to avoid adaptation issues
+            selected_user_id = int(users_df[users_df['full_name'] == selected_user_name]['user_id'].iloc[0])
+            
+            # Get detailed user data
+            user_detail_query = text("""
+                WITH user_activity AS (
+                    SELECT
+                        DATE(activity_time) as activity_date
+                    FROM (
+                        SELECT updated_at as activity_time FROM lesson_sessions
+                        WHERE user_id = :user_id
+                        UNION ALL
+                        SELECT created_at FROM conversation_messages
+                        WHERE user_id = :user_id AND message_role = 'user'
+                    ) as all_activity
+                    GROUP BY DATE(activity_time)
+                    ORDER BY DATE(activity_time)
+                ),
+                daily_lessons AS (
+                    SELECT
+                        DATE(updated_at) as completion_date,
+                        COUNT(DISTINCT lesson_id) as lessons_completed
+                    FROM lesson_sessions
+                    WHERE user_id = :user_id AND status = 'completed'
+                    GROUP BY DATE(updated_at)
+                ),
+                daily_messages AS (
+                    SELECT
+                        DATE(created_at) as message_date,
+                        COUNT(*) as message_count
+                    FROM conversation_messages
+                    WHERE user_id = :user_id AND message_role = 'user'
+                    GROUP BY DATE(created_at)
+                ),
+                user_units AS (
+                    SELECT
+                        u.title as unit_title,
+                        COUNT(DISTINCT l.lesson_id) as total_unit_lessons,
+                        COUNT(DISTINCT CASE WHEN ls.status = 'completed' THEN l.lesson_id END) as completed_unit_lessons
+                    FROM units u
+                    JOIN lessons l ON u.unit_id = l.unit_id
+                    LEFT JOIN lesson_sessions ls ON l.lesson_id = ls.lesson_id AND ls.user_id = :user_id
+                    GROUP BY u.unit_id, u.title
+                    ORDER BY u.unit_id
+                )
+                SELECT
+                    u.first_name,
+                    u.last_name,
+                    u.email,
+                    u.created_at as join_date,
+                    COUNT(DISTINCT ua.activity_date) as active_days,
+                    COUNT(DISTINCT ls.lesson_id) as total_lessons_completed,
+                    SUM(CASE WHEN ls.status = 'completed' THEN
+                        EXTRACT(EPOCH FROM (ls.updated_at - ls.created_at)) / 60
+                        ELSE 0 END) as total_time_minutes,
+                    (SELECT COUNT(*) FROM conversation_messages cm
+                     WHERE cm.user_id = u.user_id AND cm.message_role = 'user') as total_messages,
+                    (SELECT COUNT(*) FROM submissions s WHERE s.user_id = u.user_id) as total_submissions,
+                    (SELECT string_agg(unit_title || ': ' ||
+                        completed_unit_lessons || '/' || total_unit_lessons ||
+                        ' (' || ((completed_unit_lessons::float/total_unit_lessons)*100)::int || '%)',
+                        E'\n')
+                     FROM user_units) as unit_progress,
+                    (SELECT json_agg(json_build_object(
+                        'date', activity_date,
+                        'lessons', COALESCE(dl.lessons_completed, 0),
+                        'messages', COALESCE(dm.message_count, 0)
+                    ) ORDER BY activity_date DESC)
+                     FROM user_activity ua
+                     LEFT JOIN daily_lessons dl ON ua.activity_date = dl.completion_date
+                     LEFT JOIN daily_messages dm ON ua.activity_date = dm.message_date
+                     LIMIT 30) as recent_activity
+                FROM users u
+                LEFT JOIN user_activity ua ON 1=1
+                LEFT JOIN lesson_sessions ls ON u.user_id = ls.user_id
+                WHERE u.user_id = :user_id
+                GROUP BY u.user_id, u.first_name, u.last_name, u.email, u.created_at
+            """)
+            
+            user_detail = conn.execute(user_detail_query, {"user_id": selected_user_id}).fetchone()
+            
+            if user_detail:
+                # Display user profile
+                user_col1, user_col2 = st.columns([1, 3])
+                
+                with user_col1:
+                    # Get profile picture
+                    airtable_data = fetch_airtable_fellow_data()
+                    user_name = f"{user_detail[0]} {user_detail[1]}"
+                    profile_pic = None
+                    
+                    for fellow in airtable_data:
+                        if fellow.get('Name') == user_name:
+                            profile_pic = fellow.get('profile_picture_url')
+                            break
+                    
+                    if profile_pic:
+                        st.image(profile_pic, width=150)
+                    else:
+                        st.info("No profile picture available")
+                
+                with user_col2:
+                    st.subheader(f"{user_detail[0]} {user_detail[1]}")
+                    st.write(f"Email: {user_detail[2]}")
+                    st.write(f"Joined: {user_detail[3].strftime('%Y-%m-%d')}")
+                    st.write(f"Active Days: {user_detail[4]}")
+                    
+                    # Progress metrics
+                    progress_cols = st.columns(4)
+                    progress_cols[0].metric("Lessons Completed", user_detail[5])
+                    progress_cols[1].metric("Time Learning", format_time(user_detail[6]))
+                    progress_cols[2].metric("Total Messages", user_detail[7])
+                    progress_cols[3].metric("Submissions", user_detail[8])
+                
+                # Unit progress
+                st.subheader("Unit Progress")
+                unit_progress = user_detail[9].split('\n') if user_detail[9] else []
+                for unit in unit_progress:
+                    unit_name, progress = unit.split(': ', 1)
+                    st.write(f"**{unit_name}**: {progress}")
+                
+                # Recent activity
+                st.subheader("Recent Activity")
+                if user_detail[10]:
+                    recent_activity = pd.DataFrame(user_detail[10])
+                    
+                    # Create activity chart
+                    activity_chart = pd.DataFrame(recent_activity)
+                    activity_chart['date'] = pd.to_datetime(activity_chart['date'])
+                    activity_chart = activity_chart.sort_values('date')
+                    
+                    # Plot activity
+                    st.line_chart(
+                        activity_chart.set_index('date')[['lessons', 'messages']]
+                    )
+                    
+                    # Show activity table
+                    activity_table = activity_chart.copy()
+                    activity_table['date'] = activity_table['date'].dt.strftime('%Y-%m-%d')
+                    st.dataframe(
+                        activity_table[['date', 'lessons', 'messages']].head(10),
+                        hide_index=True
+                    )
+                else:
+                    st.info("No recent activity data available")
+            else:
+                st.error("Failed to load user details")
+
+# Helper function to create a visual progress bar
+def create_progress_bar(percentage):
+    return percentage
 
 # --- ADD DISPLAY_CONTENT_ANALYSIS FUNCTION HERE ---
 def display_content_analysis(engine):
@@ -733,16 +1070,22 @@ def merge_airtable_pictures(leaderboard_df, airtable_fellow_data):
 
 # --- Styling Function ---
 def style_top_3_and_stripes(df):
-    """Styles the top 3 rows with gold, silver, bronze."""
-    is_top_3 = df.index < 3
-
+    """Styles the top 3 rows with gold, silver, bronze and adds zebra striping for better readability."""
     styles = pd.DataFrame('', index=df.index, columns=df.columns)
+    
+    # Apply top 3 styling
     if len(df) >= 1: # Check if DataFrame has at least 1 row
         styles.iloc[0:1, :] = 'background-color: gold; color: black' # Gold for rank 1
     if len(df) >= 2: # Check if DataFrame has at least 2 rows
         styles.iloc[1:2, :] = 'background-color: silver; color: black' # Silver for rank 2
     if len(df) >= 3: # Check if DataFrame has at least 3 rows
         styles.iloc[2:3, :] = 'background-color: #CD7F32; color: white' # Bronze for rank 3
+    
+    # Add zebra striping for rows after top 3
+    for i in range(3, len(df)):
+        if i % 2 == 0:  # Even rows
+            styles.iloc[i, :] = 'background-color: #2E2E2E'
+    
     return styles
 
 
