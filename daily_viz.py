@@ -84,13 +84,13 @@ def main():
     )
     # --- End Dark Theme CSS ---
 
-    menu = ["Metrics Dashboard", "User Leaderboard", "Content Analysis", "Analysis Summary", "Curriculum Overview", "Mock Interviews"]
+    menu = ["Metrics Dashboard", "Users", "Content Analysis", "Analysis Summary", "Curriculum Overview", "Mock Interviews"]
     choice = st.sidebar.selectbox("Navigation", menu)
 
     if choice == "Metrics Dashboard":
         display_metrics_dashboard(engine)
         engine.dispose()
-    elif choice == "User Leaderboard":
+    elif choice == "Users":
         display_user_leaderboard(engine)
         engine.dispose()
     elif choice == "Content Analysis":
@@ -423,11 +423,11 @@ def display_lesson_insights_table(lesson_insights_table_data):
 
 
 def display_user_leaderboard(engine):
-    st.header("User Leaderboard")
+    st.header("Users")
     st.write("Note: 'Universal Chat Messages' count is approximated and may not be perfectly accurate without a clear distinction in the database.")
 
     # Create tabs for different views
-    tab1, tab2 = st.tabs(["Leaderboard View", "Detailed User View"])
+    tab1, tab2, tab3 = st.tabs(["Leaderboard View", "Detailed User View", "Daily Activity"])
     
     with tab1:
         # --- Filtering and Search Options ---
@@ -838,6 +838,153 @@ def display_user_leaderboard(engine):
                     st.info("No recent activity data available")
             else:
                 st.error("Failed to load user details")
+    
+    with tab3:
+        st.subheader("Daily User Activity")
+        st.write("This view shows which users were active on each day.")
+        
+        # Date range selector
+        col1, col2 = st.columns(2)
+        with col1:
+            days_to_show = st.slider("Number of days to display", min_value=7, max_value=30, value=14, step=1)
+        
+        with col2:
+            end_date = st.date_input("End date", value=datetime.now().date())
+        
+        start_date = end_date - timedelta(days=days_to_show-1)
+        
+        # Generate date range in Python
+        date_range = [(start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(days_to_show)]
+        date_range.reverse()  # Most recent dates first
+        
+        # Query to get user activity for each day
+        try:
+            # Create a DataFrame to store all activity data
+            all_activity_data = []
+            
+            for date_str in date_range:
+                # Query for this specific date
+                day_query = text("""
+                    WITH user_activity AS (
+                        SELECT DISTINCT
+                            user_id
+                        FROM (
+                            -- Lesson sessions activity
+                            SELECT
+                                user_id
+                            FROM lesson_sessions
+                            WHERE DATE(updated_at) = :activity_date
+                            UNION
+                            -- Chat messages activity
+                            SELECT
+                                user_id
+                            FROM conversation_messages
+                            WHERE message_role = 'user' AND DATE(created_at) = :activity_date
+                        ) all_activity
+                    ),
+                    users_info AS (
+                        SELECT
+                            user_id,
+                            first_name || ' ' || last_name AS full_name
+                        FROM users
+                    )
+                    SELECT
+                        ui.full_name
+                    FROM user_activity ua
+                    JOIN users_info ui ON ua.user_id = ui.user_id
+                    ORDER BY ui.full_name
+                """)
+                
+                with engine.connect() as conn:
+                    # Execute query for this date
+                    active_users_df = pd.read_sql_query(
+                        day_query,
+                        conn,
+                        params={"activity_date": date_str}
+                    )
+                    
+                    # Get the list of active users for this date
+                    active_users = active_users_df['full_name'].tolist() if not active_users_df.empty else []
+                    
+                    # Add to our activity data
+                    all_activity_data.append({
+                        'activity_date': date_str,
+                        'active_users': active_users,
+                        'user_count': len(active_users)
+                    })
+            
+            # Convert to DataFrame
+            activity_df = pd.DataFrame(all_activity_data)
+                
+            # Process and display the activity data
+            if activity_df is not None and not activity_df.empty:
+                # Format the data for display
+                activity_df['day_of_week'] = pd.to_datetime(activity_df['activity_date']).dt.strftime('%a')
+                activity_df['formatted_date'] = pd.to_datetime(activity_df['activity_date']).dt.strftime('%b %d')
+                activity_df['date_display'] = activity_df['formatted_date'] + ' (' + activity_df['day_of_week'] + ')'
+                
+                # Create a heatmap-style display
+                st.subheader("Activity Overview")
+                
+                # Display metrics
+                metrics_cols = st.columns(3)
+                
+                # Calculate metrics
+                all_users = set()
+                for users in activity_df['active_users']:
+                    all_users.update(users)
+                total_active_users = len(all_users)
+                
+                avg_daily_users = activity_df['user_count'].mean()
+                
+                if not activity_df['user_count'].empty:
+                    most_active_idx = activity_df['user_count'].idxmax()
+                    most_active_day = activity_df.iloc[most_active_idx]
+                    most_active_display = f"{most_active_day['formatted_date']} ({most_active_day['user_count']} users)"
+                else:
+                    most_active_display = "None"
+                
+                metrics_cols[0].metric("Total Active Users", total_active_users)
+                metrics_cols[1].metric("Avg. Daily Users", f"{avg_daily_users:.1f}")
+                metrics_cols[2].metric("Most Active Day", most_active_display)
+                
+                # Create the daily activity display
+                st.subheader("Daily User Activity")
+                
+                # Display each day with its active users
+                for _, row in activity_df.iterrows():
+                    date_col, users_col = st.columns([1, 3])
+                    
+                    with date_col:
+                        st.markdown(f"### {row['date_display']}")
+                        st.metric("Active Users", row['user_count'])
+                    
+                    with users_col:
+                        if row['active_users'] and len(row['active_users']) > 0:
+                            # Create a more visual representation with user badges
+                            html_users = ""
+                            for user in row['active_users']:
+                                html_users += f"""
+                                <span style="
+                                    display: inline-block;
+                                    padding: 5px 10px;
+                                    margin: 3px;
+                                    background-color: #2C3E50;
+                                    border-radius: 15px;
+                                    color: white;
+                                    font-size: 0.9em;
+                                ">{user}</span>
+                                """
+                            st.markdown(html_users, unsafe_allow_html=True)
+                        else:
+                            st.write("No active users")
+                    
+                    st.markdown("---")
+            else:
+                st.info("No activity data found for the selected date range.")
+        except Exception as e:
+            logger.error(f"Error fetching daily activity data: {e}")
+            st.error(f"Failed to load daily activity data: {e}")
 
 # Helper function to create a visual progress bar
 def create_progress_bar(percentage):
